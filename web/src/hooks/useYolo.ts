@@ -1,20 +1,69 @@
 import { useEffect } from "react";
+import { io } from "socket.io-client";
+import type { Painting } from "../types/painting.ts";
+import paintingsData from "../../assets/json/paintings.json";
 
-export const useYolo = (onDetection: (data:any) => void) => {
+export const useYolo = (
+  onDetection: (data: Painting) => void,
+  onStatus?: (status: string) => void
+) => {
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8000/ws/");
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("Painting Detected:", data);
-      onDetection(data);
-    };
-    
-    socket.close = () => {      console.log("WebSocket connection closed.");
-      console.log("WebSocket connection closed.");
-    };
+    const socket = io("http://localhost:8000");
+
+    socket.on("status_update", (data: { status: string }) => {
+      console.log("Status update received:", data.status);
+      onStatus?.(data.status);
+    });
+
+    socket.on("painting_detected", (data: { id: string | number, imageData?: string }) => {
+      console.log("Detection received from YOLO:", data);
+
+      let finalPainting: Painting | null = null;
+      const idStr = data.id.toString();
+
+      if (idStr.startsWith("unknown")) {
+        finalPainting = {
+          id: idStr,
+          title: "Desconhecido",
+          artist: "Desconhecido",
+          year: "Desconhecido",
+          style: "Desconhecido",
+          genre: "Desconhecido",
+          medium: "Desconhecido",
+          description: "Obra não identificada na base de dados.",
+          authors_intention: "Desconhecido",
+          context: "Desconhecido",
+          imagePath: "",
+          imageData: data.imageData
+        };
+      } else {
+
+        const matched = paintingsData.paintings.find(p => p.$id === data.id);
+        if (matched) {
+          finalPainting = {
+            id: matched.$id,
+            title: matched.title,
+            artist: matched.artist,
+            year: matched.year,
+            style: matched.style,
+            genre: matched.genre,
+            medium: matched.medium,
+            description: matched.description,
+            authors_intention: matched.authors_intention,
+            context: matched.context,
+            imagePath: matched.imagePath
+          };
+        }
+      }
+
+      if (finalPainting) {
+        onDetection(finalPainting);
+      }
+    });
 
     return () => {
-      socket.close();
+      socket.off("painting_detected");
+      socket.disconnect();
     };
   }, [onDetection]);
 };
