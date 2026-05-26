@@ -30,9 +30,10 @@ export class LyriaService {
     }
   }
 
-  public setVolume(volume: number) {
+  public setVolume(volume: number, rampTime: number = 0.4) {
     if (this.gainNode && this.audioContext) {
-      this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.1);
+      this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+      this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + rampTime);
     }
   }
 
@@ -81,12 +82,12 @@ export class LyriaService {
   private pcmToAudioBuffer(arrayBuffer: ArrayBuffer): AudioBuffer {
     const numChannels = 2;
     const sampleRate = 48000;
-    
+
     const numSamples = arrayBuffer.byteLength / 2;
     const numFrames = numSamples / numChannels;
 
     const audioBuffer = this.audioContext!.createBuffer(numChannels, numFrames, sampleRate);
-    
+
     const int16Data = new Int16Array(arrayBuffer);
 
     const leftChannel = audioBuffer.getChannelData(0);
@@ -104,7 +105,7 @@ export class LyriaService {
     if (!this.audioContext || !this.gainNode) return;
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
-    
+
     source.connect(this.gainNode);
 
     const start = Math.max(this.audioContext.currentTime, this.nextStartTime);
@@ -112,10 +113,31 @@ export class LyriaService {
     this.nextStartTime = start + buffer.duration;
   }
 
-  public stop() {
+  public pause() {
+    if (this.gainNode && this.audioContext) {
+      this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+      this.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.3);
+    }
+    this.setStatus('idle');
+  }
+
+  public resume(volume: number) {
+    if (this.gainNode && this.audioContext) {
+      this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+      this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.3);
+    }
+    this.setStatus('playing');
+  }
+
+  public async stop() {
+    if (this.gainNode && this.audioContext && this.session) {
+      this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+      this.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.3);
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
     this.session?.close();
     this.session = null;
     this.nextStartTime = 0;
     this.setStatus('idle');
   }
-}
+  }

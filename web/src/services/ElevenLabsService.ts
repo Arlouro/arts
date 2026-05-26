@@ -3,6 +3,7 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 export class ElevenLabsService {
   private client: ElevenLabsClient;
   private audioContext: AudioContext | null = null;
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
 
   constructor(apiKey: string) {
     this.client = new ElevenLabsClient({
@@ -21,7 +22,6 @@ export class ElevenLabsService {
 
   async generateSfxBuffer(prompt: string): Promise<AudioBuffer | null> {
     this.initAudio();
-    console.log(`Generating SFX buffer for: ${prompt}`);
 
     try {
       const audioStream = await this.client.textToSoundEffects.convert({
@@ -50,17 +50,31 @@ export class ElevenLabsService {
     return new Promise((resolve) => {
       const source = this.audioContext!.createBufferSource();
       source.buffer = buffer;
+      this.activeSources.add(source);
 
       const gainNode = this.audioContext!.createGain();
-      gainNode.gain.value = volume;
+      gainNode.gain.setValueAtTime(0, this.audioContext!.currentTime);
+      gainNode.connect(this.audioContext!.destination);
 
       source.connect(gainNode);
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext!.currentTime + 0.1);
-      gainNode.connect(this.audioContext!.destination);
       
-      source.onended = () => resolve();
+      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext!.currentTime + 0.1);
+      
+      source.onended = () => {
+        this.activeSources.delete(source);
+        resolve();
+      };
       source.start(0);
     });
+  }
+
+  public stopAll() {
+    this.activeSources.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {}
+    });
+    this.activeSources.clear();
   }
 
   async generateAndPlaySfx(prompt: string): Promise<void> {
@@ -70,5 +84,3 @@ export class ElevenLabsService {
     }
   }
 }
-
-

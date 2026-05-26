@@ -1,5 +1,13 @@
 import { Server } from "socket.io";
 import type { Painting } from "../types/painting";
+import * as fs from "fs";
+import * as path from "path";
+
+const DEBUG_FOLDER = path.join(process.cwd(), "debug_analysis");
+
+if (!fs.existsSync(DEBUG_FOLDER)) {
+  fs.mkdirSync(DEBUG_FOLDER, { recursive: true });
+}
 
 const io = new Server(8000, {
   cors: {
@@ -9,6 +17,7 @@ const io = new Server(8000, {
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
+  
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
@@ -22,8 +31,20 @@ io.on("connection", (socket) => {
     console.log("Status update:", data);
     io.emit("status_update", data);
   });
-  });
 
+  socket.on("save_analysis", (data: { title: string, analysis: any }) => {
+    const filename = `analysis_${data.title.replace(/\s+/g, '_')}_${Date.now()}.json`;
+    const filePath = path.join(DEBUG_FOLDER, filename);
+    
+    fs.writeFile(filePath, JSON.stringify(data.analysis, null, 2), (err) => {
+      if (err) {
+        console.error("Failed to save debug analysis:", err);
+      } else {
+        console.log(`Debug analysis saved to: ${filePath}`);
+      }
+    });
+  });
+});
 
 console.log("Server running on port 8000");
 

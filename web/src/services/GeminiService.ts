@@ -46,7 +46,6 @@ export class GeminiService {
 
     const isUnknown = paintingData.id.toString().startsWith("unknown");
     
-    // TODO: Define how the relevance of object is chosen for the object detection.
     const prompt = `### ROLE: 
       Expert Art Historian, Semiotician, Musicologist, and Audio Engineer.
 
@@ -54,13 +53,13 @@ export class GeminiService {
       Analyze ${isUnknown ? "this unidentified artwork" : `"${paintingData.title}" by ${paintingData.artist} (${paintingData.year})`} to generate a multifaceted emotional and auditory profile.
 
       ### SONIFICATION MAPPING RULES:
-      - **Color Temperature & Hue:** Map to Harmonic Complexity (Warm = Brass/Woodwinds; Cold = Digital/Strings) and Timbre.
-      - **Saturation:** Map to tempo (High saturation = Faster tempo; Low saturation = Slower tempo).
-      - **Brushstroke Texture:** Map to Articulation (Jagged = Staccato; Smooth = Legato).
-      - **Compositional Weight:** Map to Dynamic Range and Orchestration Density (Heavy/Bottom-weighted = Low-frequency drones/Double bass).
-      - **Lighting:** Map to Reverb and Spatialization (High contrast = Sharp transients with deep decay).
-      - **Visual Complexity:** Map to Textural Layers (High complexity = Polyphonic textures; Minimalist = Sparse arrangements).
-      - **Instruments Selection:** Base on detected objects ${isUnknown ? "in the image" : "and historical context"}.
+      - **Color Temperature & Hue**: Map to Pitch Range, Mode, and Tempo (Warm = High pitch/Fast tempo; Cold = Low pitch/Slow tempo).
+      - **Saturation**: Map to Tempo, Pitch Range, and Mode (High saturation = Fast tempo/Major mode; Low saturation = Slow tempo/Minor mode).
+      - **Brushstroke Texture**: Map to Rhythm Types and Timbre (Rough = Irregular rhythm/Sharp timbre; Smooth = Regular rhythm/Pure timbre).
+      - **Compositional Weight**: Map to Musical Structure and Melodic Movement (High symmetry = Stepwise movement/Predictable structure; Asymmetrical = Intervallic leaps).
+      - **Lighting**: Map to Volume Envelope and Dynamics (Hard shadows = Sharp attack/Loud dynamics; Soft shadows = Slow attack/Soft dynamics).
+      - **Visual Complexity**: Map to Musical Form Complexity and Dynamism (High complexity = High musical complexity/High dynamism; Low complexity = Repetitive structures).
+      - **Instruments Selection**: Map strictly to Timbre/Tone Color (Aggressive visuals = Sharp/rich timbres; Serene visuals = Pure/bright timbres).
 
       ${isUnknown ? `### SPECIAL INSTRUCTION:
       As this painting is not in our database, please perform a blind visual analysis. Identify the likely style, potential period, and key visual elements to create the soundscape.` : `### CONTEXT:
@@ -70,13 +69,13 @@ export class GeminiService {
       ### TASKS:
       1. Conduct an analysis of the visual elements ${isUnknown ? "purely from the image" : "integrated with the provided historical context"}.
       2. Generate a "Soundscape Profile" and Prompt for the Lyria AI generator.
-      3. Generate recognizable foley/SFX prompts for specific detected objects.
+      3. Generate recognizable SFX prompts for specific detected objects.
 
       ### OUTPUT REQUIREMENTS:
       - **Language:** All JSON string values MUST be in European Portuguese (PT-PT).
       - **Format:** Strict JSON. No conversational filler.
       - **Tone:** Analytical, evocative, and psychologically grounded.
-      - **Detected Objects Rules:** Ordered by relevance list of up to 5 most salient objects in the painting
+      - **Detected Objects Rules:** Ordered by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance) list of up to 5 most relevantly detected objects in the painting
       - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
       - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
       - **Audio Description Rules:** The description should prioritize essential visual elements and be objective. 

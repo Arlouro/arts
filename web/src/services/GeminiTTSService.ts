@@ -4,6 +4,7 @@ import { decode } from "base64-arraybuffer";
 export class GeminiTTSService {
   private gemini: GoogleGenAI;
   private audioContext: AudioContext | null = null;
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
 
   constructor(apiKey: string) {
     this.gemini = new GoogleGenAI({ apiKey });
@@ -52,17 +53,37 @@ export class GeminiTTSService {
     }
   }
 
-  async playAudioBuffer(buffer: AudioBuffer): Promise<void> {
+  async playAudioBuffer(buffer: AudioBuffer, volume: number = 1.0): Promise<void> {
     if (!this.audioContext) return;
     
     return new Promise((resolve) => {
       const source = this.audioContext!.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.audioContext!.destination);
+      this.activeSources.add(source);
       
-      source.onended = () => resolve();
+      const gainNode = this.audioContext!.createGain();
+      gainNode.gain.setValueAtTime(0, this.audioContext!.currentTime);
+      
+      source.connect(gainNode);
+      gainNode.connect(this.audioContext!.destination);
+      
+      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext!.currentTime + 0.1);
+      
+      source.onended = () => {
+        this.activeSources.delete(source);
+        resolve();
+      };
       source.start(0);
     });
+  }
+
+  public stopAll() {
+    this.activeSources.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {}
+    });
+    this.activeSources.clear();
   }
 
   async textToSpeech(text: string): Promise<void> {

@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useRef, useCallback } from "react";
+import { io, Socket } from "socket.io-client";
 import type { Painting } from "../types/painting.ts";
 import paintingsData from "../../assets/json/paintings.json";
 
@@ -7,8 +7,15 @@ export const useYolo = (
   onDetection: (data: Painting) => void,
   onStatus?: (status: string) => void
 ) => {
+  const socketRef = useRef<Socket | null>(null);
+
+  const emit = useCallback((event: string, data: any) => {
+    socketRef.current?.emit(event, data);
+  }, []);
+
   useEffect(() => {
     const socket = io("http://localhost:8000");
+    socketRef.current = socket;
 
     socket.on("status_update", (data: { status: string }) => {
       console.log("Status update received:", data.status);
@@ -64,6 +71,9 @@ export const useYolo = (
     return () => {
       socket.off("painting_detected");
       socket.disconnect();
+      socketRef.current = null;
     };
   }, [onDetection]);
+
+  return { emit };
 };
