@@ -47,8 +47,7 @@ export class ElevenLabsService {
   async playAudioBuffer(buffer: AudioBuffer, volume: number = 0.6, pan: number = 0): Promise<void> {
     if (!this.audioContext) return;
     
-    // Scale volume down since user requested SFX to be generally lower and more ambient
-    const adjustedVolume = volume * 0.4; 
+    const adjustedVolume = volume * 0.5; 
 
     return new Promise((resolve) => {
       const source = this.audioContext!.createBufferSource();
@@ -65,7 +64,6 @@ export class ElevenLabsService {
       const now = this.audioContext!.currentTime;
       const duration = buffer.duration;
       
-      // Use a longer fade for a smoother, less sudden entrance (max 1.5 seconds, or 1/3 of the track if short)
       const fadeDuration = Math.min(1.5, duration / 3);
       
       gainNode.gain.setValueAtTime(0, now);
