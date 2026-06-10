@@ -5,7 +5,7 @@ import { NotificationModal } from './NotificationModal';
 import { CameraStream } from './CameraStream';
 import type { Painting } from '../types/painting';
 
-const IS_DEV_MODE = true; 
+const IS_DEV_MODE = import.meta.env.VITE_SHOW_CAMERA === 'true'; 
 
 export const LyriaPlayer: React.FC = () => {
   const { 
