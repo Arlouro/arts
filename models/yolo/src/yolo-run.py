@@ -115,7 +115,19 @@ while True:
                         sio.emit('status_update', {'status': 'centered'})
                     else:
                         print(f"ID {obj_id} is not centered in frame. Skipping capture.")
-                        sio.emit('status_update', {'status': 'need_center'})
+                        x_offset = coords_norm[0].item() - 0.5
+                        y_offset = coords_norm[1].item() - 0.5
+                        
+                        if abs(x_offset) > abs(y_offset):
+                            if x_offset < -0.05:
+                                sio.emit('status_update', {'status': 'need_center_left'})
+                            else:
+                                sio.emit('status_update', {'status': 'need_center_right'})
+                        else:
+                            if y_offset < -0.05:
+                                sio.emit('status_update', {'status': 'need_center_up'})
+                            else:
+                                sio.emit('status_update', {'status': 'need_center_down'})
                         continue
 
                     os.makedirs(os.path.join(id_save_path, 'painting'), exist_ok=True)
