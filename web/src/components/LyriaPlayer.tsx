@@ -77,7 +77,10 @@ export const LyriaPlayer: React.FC = () => {
     idle: "À procura de obra...",
     focusing: "Obra detetada. Por favor, aguarde o foco.",
     centered: "Obra centrada. A capturar imagem.",
-    need_center: "Por favor, centre a obra no ecrã.",
+    need_center_left: "Aponte a câmara mais para a esquerda, para centrar o quadro.",
+    need_center_right: "Aponte a câmara mais para a direita, para centrar o quadro.",
+    need_center_up: "Aponte a câmara mais para cima, para centrar o quadro.",
+    need_center_down: "Aponte a câmara mais para baixo, para centrar o quadro.",
     processing: "A analisar o contexto emocional da obra..."
   };
 
@@ -139,7 +142,6 @@ export const LyriaPlayer: React.FC = () => {
     } else if (detectionStatus === 'focusing') {
       announce("Quadro detetado. Por favor, mantenha a câmara parada.", "painting_detected_focus");
     } else if (detectionStatus.startsWith('need_center')) {
-      // Omit the audio key for directional feedback so it forces TTS to read the specific text
       announce(statusMessages[detectionStatus] || statusMessages['need_center']);
     }
   }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted]);
@@ -350,13 +352,6 @@ export const LyriaPlayer: React.FC = () => {
 
       <CameraStream 
         onFrame={sendFrame} 
-        isPaused={isPaused} 
-        isActive={!isSettingsOpen && !isModalOpen} 
-      />
-    </div>
-  );
-};
-Frame={sendFrame} 
         isPaused={isPaused} 
         isActive={!isSettingsOpen && !isModalOpen} 
       />
