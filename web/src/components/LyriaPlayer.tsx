@@ -334,7 +334,7 @@ export const LyriaPlayer: React.FC = () => {
         announce={announce}
       />
 
-      <footer className="status-overlay sr-only" aria-live="polite">
+      <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? "" : undefined}>
         {isProcessing ? "A processar com inteligência artificial..." : ""}
         {activePainting ? `Obra atual: ${activePainting.title} de ${activePainting.artist}` : ""}
       </footer>
