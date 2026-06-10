@@ -344,7 +344,7 @@ export const LyriaPlayer: React.FC = () => {
 
       <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? true : undefined}>
         {isProcessing ? "A processar com inteligência artificial..." : ""}
-        {activePainting ? `Obra atual: ${activePainting.title} de ${activePainting.artist}` : ""}
+        {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Obra atual: Obra desconhecida" : `Obra atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
       </footer>
 
       <CameraStream 

@@ -293,7 +293,10 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       // 1. Music (Lyria)
       let introBufferPromise: Promise<AudioBuffer | null> | null = null;
       if ((settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) && !isPaused) {
-        const introText = `${painting.title}. ${painting.artist && painting.artist !== "Desconhecido" ? `Por ${painting.artist}.` : ""} ${painting.year ? `Ano, ${painting.year}.` : ""}`;
+        const isUnknown = painting.id.toString().startsWith("unknown");
+        const introText = isUnknown 
+          ? "Obra desconhecida." 
+          : `${painting.title}. ${painting.artist && painting.artist !== "Desconhecido" ? `Por ${painting.artist}.` : ""} ${painting.year && painting.year !== "Desconhecido" ? `Ano, ${painting.year}.` : ""}`;
         introBufferPromise = tts.generateSpeechBuffer(introText);
       }
 
