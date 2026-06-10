@@ -22,7 +22,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
     if (isOpen) {
       isInitialFocus.current = true;
       const timer = setTimeout(() => {
-        announce(`${message}. Botão Confirmar.`);
+        announce(`${message}. Botão Fechar.`);
         okButtonRef.current?.focus();
       }, 150);
       return () => clearTimeout(timer);
@@ -48,20 +48,20 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           ref={okButtonRef}
           className="big-button btn-ok"
           onClick={onClose}
-          onMouseEnter={() => announce("Confirmar", undefined)}
+          onMouseEnter={() => announce("Fechar", undefined)}
           onFocus={() => {
             // Prevent the initial auto-focus from cutting off the full message announcement
             if (!isInitialFocus.current) {
-              announce("Confirmar", undefined);
+              announce("Fechar", undefined);
             }
             isInitialFocus.current = false;
           }}
-          aria-label="Confirmar e fechar alerta"
+          aria-label="Fechar alerta"
         >
           <span className="icon" aria-hidden="true">
-            <i className="fa-regular fa-circle-check"></i>
+            <i className="fa-regular fa-circle-xmark"></i>
           </span>
-          <span>OK</span>
+          <span>Fechar</span>
         </button>
       </div>
     </div>

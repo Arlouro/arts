@@ -75,7 +75,7 @@ export class GeminiService {
       - **Language:** Strings intended for user playback (ArtDescription, ArtAnalysis, DetectedEmotions, Object) MUST be in European Portuguese (PT-PT). Strings intended for AI generation models (MusicPrompt.Prompt and SoundEffectPrompt) MUST be strictly in English.
       - **Format:** Strict JSON. No conversational filler.
       - **Tone:** Analytical, evocative, and psychologically grounded.
-      - **Detected Objects Rules:** Ordered by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance) list of up to 5 most relevantly detected objects in the painting
+      - **Detected Objects Rules:** List of the most relevantly detected objects in the painting (up to 5 objects). Do not force 5 objects; only include objects that are significant to the composition or atmosphere. Can be as few as 1 or 2 if the painting is simple. Order by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance).
       - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
       - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
       - **Audio Description Rules:** Write for a Blind or Low Vision audience. Use a clear spatial logic (e.g., foreground to background, or left to right) to help the user construct a mental map. 
