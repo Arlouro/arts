@@ -42,6 +42,8 @@ export const LyriaPlayer: React.FC = () => {
   // Audio announcement tracking
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastAnnouncedKey = useRef<string | null>(null);
+  const lastStatusAnnouncementRef = useRef<number>(0);
+  const currentTtsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     const handleInteraction = () => {
@@ -84,7 +86,17 @@ export const LyriaPlayer: React.FC = () => {
     processing: "A analisar o contexto emocional da obra..."
   };
 
-  const announce = (text: string, key?: string) => {
+  const announce = (text: string, key?: string, force: boolean = false) => {
+    const now = Date.now();
+    
+    if (!force && !key && now - lastStatusAnnouncementRef.current < 4000) {
+      return;
+    }
+
+    if (!key) {
+      lastStatusAnnouncementRef.current = now;
+    }
+
     // Stop any current TTS
     window.speechSynthesis.cancel();
     
@@ -114,15 +126,21 @@ export const LyriaPlayer: React.FC = () => {
       audio.play().catch(() => {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'pt-PT';
-        utterance.onend = () => setGlobalDucking(false);
+        currentTtsUtteranceRef.current = utterance;
+        utterance.onend = () => {
+          setGlobalDucking(false);
+          currentTtsUtteranceRef.current = null;
+        };
         window.speechSynthesis.speak(utterance);
       });
     } else if (hasInteracted) {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'pt-PT';
+      currentTtsUtteranceRef.current = utterance;
       utterance.onend = () => {
         setGlobalDucking(false);
         lastAnnouncedKey.current = null;
+        currentTtsUtteranceRef.current = null;
       };
       window.speechSynthesis.speak(utterance);
     } else {
@@ -218,7 +236,7 @@ export const LyriaPlayer: React.FC = () => {
         <button 
           className="big-button btn-settings"
           onClick={() => setIsSettingsOpen(true)}
-          onMouseEnter={() => announce("Definições", "settings")}
+          onMouseEnter={() => announce("Definições", "settings", true)}
           aria-label="Abrir definições do sistema"
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
@@ -231,7 +249,7 @@ export const LyriaPlayer: React.FC = () => {
         <button 
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
           onClick={() => handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
-          onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause")}
+          onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause", true)}
           aria-label={isPaused ? "Iniciar sistema e retomar deteção" : "Pausar sistema e parar áudio"}
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
@@ -244,7 +262,7 @@ export const LyriaPlayer: React.FC = () => {
         <button 
           className="big-button btn-stop"
           onClick={() => handleActionWithCheck(stopAll, !!activePainting || isProcessing, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
-          onMouseEnter={() => announce("Procurar outro quadro", "stop_audio")}
+          onMouseEnter={() => announce("Procurar outro quadro", "stop_audio", true)}
           aria-label="Procurar outro quadro"
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
@@ -267,7 +285,7 @@ export const LyriaPlayer: React.FC = () => {
               playDescription();
             }
           }}
-          onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description")}
+          onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description", true)}
           disabled={isDescriptionPlaying || isSettingsOpen || isModalOpen}
           aria-label={descriptionText ? "Tocar Áudio-descrição da obra" : "Áudio-descrição não disponível"}
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
@@ -291,7 +309,7 @@ export const LyriaPlayer: React.FC = () => {
               playAnalysis();
             }
           }}
-          onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis")}
+          onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis", true)}
           disabled={isAnalysisPlaying || isSettingsOpen || isModalOpen}
           aria-label={analysisText ? "Tocar Análise Detalhada da obra e som de objetos identificados" : "Análise não disponível"}
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
@@ -317,7 +335,7 @@ export const LyriaPlayer: React.FC = () => {
               playAuthorsIntention();
             }
           }}
-          onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention")}
+          onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention", true)}
           disabled={isIntentionPlaying || isSettingsOpen || isModalOpen}
           aria-label={authorsIntentionText ? "Tocar Intenção do Autor da obra" : "Intenção do Autor não disponível"}
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
