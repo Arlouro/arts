@@ -37,6 +37,11 @@ io.on("connection", (socket) => {
     io.emit("resume_detection");
   });
 
+  socket.on("process_frame", (data: { image: string }) => {
+    // Relay the image to the Python script
+    io.emit("process_frame", data);
+  });
+
   socket.on("status_update", (data: { status: string }) => {
     console.log("Status update:", data);
     io.emit("status_update", data);

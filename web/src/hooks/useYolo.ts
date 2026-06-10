@@ -13,8 +13,13 @@ export const useYolo = (
     socketRef.current?.emit(event, data);
   }, []);
 
+  const sendFrame = useCallback((imageData: string) => {
+    socketRef.current?.emit("process_frame", { image: imageData });
+  }, []);
+
   useEffect(() => {
-    const socket = io("http://localhost:8000");
+    const RELAY_URL = import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000";
+    const socket = io(RELAY_URL);
     socketRef.current = socket;
 
     socket.on("status_update", (data: { status: string }) => {
@@ -75,5 +80,5 @@ export const useYolo = (
     };
   }, [onDetection]);
 
-  return { emit };
+  return { emit, sendFrame };
 };

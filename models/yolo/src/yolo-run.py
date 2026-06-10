@@ -6,12 +6,30 @@ import socketio
 import shutil
 import base64
 import cv2
+import numpy as np
 
 sio = socketio.Client()
+RELAY_URL = os.environ.get('RELAY_SERVER_URL', 'http://localhost:8000')
+
+latest_frame = None
+
+@sio.on('process_frame')
+def on_process_frame(data):
+    global latest_frame
+    try:
+        # data['image'] is a data URL: "data:image/jpeg;base64,..."
+        encoded_data = data['image'].split(',')[1]
+        nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is not None:
+            latest_frame = frame
+    except Exception as e:
+        print(f"Error decoding frame: {e}")
+
 try:
-    sio.connect('http://localhost:8000', transports=['websocket'])
+    sio.connect(RELAY_URL, transports=['websocket'])
 except:
-    sio.connect('http://localhost:8000')
+    sio.connect(RELAY_URL)
 
 is_paused = False
 
@@ -39,12 +57,14 @@ detection_start_times = {}
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-cap = cv2.VideoCapture(0)
+print("Waiting for frames from frontend...")
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+while True:
+    if latest_frame is None:
+        time.sleep(0.01)
+        continue
+
+    frame = latest_frame.copy()
 
     if is_paused:
         cv2.putText(frame, "DETECTION PAUSED (AUDIO PLAYING)", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
@@ -128,5 +148,4 @@ while cap.isOpened():
         saved_ids.clear()
         print("Saved IDs cleared.")
 
-cap.release()
-cv2.destroyAllWindows()
+    cv2.destroyAllWindows()

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useOrchestrator } from '../hooks/useOrchestrator';
 import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
+import { CameraStream } from './CameraStream';
 import type { Painting } from '../types/painting';
 
 const IS_DEV_MODE = true; 
@@ -26,6 +27,7 @@ export const LyriaPlayer: React.FC = () => {
     togglePause,
     processNewDetection,
     setGlobalDucking,
+    sendFrame,
     stopAll 
   } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, import.meta.env.VITE_ELEVENLABS_API_KEY);
 
@@ -336,6 +338,12 @@ export const LyriaPlayer: React.FC = () => {
         {isProcessing ? "A processar com inteligência artificial..." : ""}
         {activePainting ? `Obra atual: ${activePainting.title} de ${activePainting.artist}` : ""}
       </footer>
+
+      <CameraStream 
+        onFrame={sendFrame} 
+        isPaused={isPaused} 
+        isActive={!isSettingsOpen && !isModalOpen} 
+      />
     </div>
   );
 };

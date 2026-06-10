@@ -57,6 +57,7 @@ describe('LyriaPlayer Accessibility', () => {
       processNewDetection: vi.fn(),
       setGlobalDucking: vi.fn(),
       stopAll: vi.fn(),
+      sendFrame: vi.fn(),
     });
 
     const { container } = render(<LyriaPlayer />);
@@ -99,6 +100,7 @@ describe('Screen Reader & Blind User Support', () => {
       processNewDetection: vi.fn(),
       setGlobalDucking: vi.fn(),
       stopAll: vi.fn(),
+      sendFrame: vi.fn(),
     });
   });
 

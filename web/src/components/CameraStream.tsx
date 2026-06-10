@@ -1,0 +1,102 @@
+import React, { useEffect, useRef } from 'react';
+
+interface CameraStreamProps {
+  onFrame: (imageData: string) => void;
+  isPaused: boolean;
+  isActive: boolean;
+}
+
+export const CameraStream: React.FC<CameraStreamProps> = ({ onFrame, isPaused, isActive }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const startCamera = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error("Error accessing camera:", err);
+      }
+    };
+
+    if (isActive) {
+      startCamera();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isActive]);
+
+  useEffect(() => {
+    if (isActive && !isPaused) {
+      intervalRef.current = window.setInterval(() => {
+        captureFrame();
+      }, 200); // Send frame every 200ms
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isActive, isPaused]);
+
+  const captureFrame = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (context && video.readyState === video.HAVE_ENOUGH_DATA) {
+      // Maintain aspect ratio or force square (YOLO likes square)
+      canvas.width = 640;
+      canvas.height = 480;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Compress to JPEG to save bandwidth
+      const imageData = canvas.toDataURL('image/jpeg', 0.6);
+      onFrame(imageData);
+    }
+  };
+
+  if (!isActive) return null;
+
+  return (
+    <div className="camera-viewfinder" aria-hidden="true">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <div className="scan-line"></div>
+    </div>
+  );
+};

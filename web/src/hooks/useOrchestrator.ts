@@ -367,7 +367,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     }
   }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled]);
 
-  const { emit } = useYolo(processNewDetection, setDetectionStatus);
+  const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus);
   emitRef.current = emit;
 
   const togglePause = useCallback(async () => {
@@ -407,6 +407,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     togglePause,
     processNewDetection,
     setGlobalDucking,
+    sendFrame,
     stopAll: async () => {
       emitRef.current?.("resume_detection", {});
       await lyria.stop();
