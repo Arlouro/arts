@@ -12,6 +12,7 @@ if (!fs.existsSync(DEBUG_FOLDER)) {
 const io = new Server(8000, {
   cors: {
     origin: "*",
+    allowedHeaders: ["ngrok-skip-browser-warning"]
   },
 });
 

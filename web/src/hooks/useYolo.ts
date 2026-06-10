@@ -19,7 +19,11 @@ export const useYolo = (
 
   useEffect(() => {
     const RELAY_URL = import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000";
-    const socket = io(RELAY_URL);
+    const socket = io(RELAY_URL, {
+      extraHeaders: {
+        "ngrok-skip-browser-warning": "true"
+      }
+    });
     socketRef.current = socket;
 
     socket.on("status_update", (data: { status: string }) => {
