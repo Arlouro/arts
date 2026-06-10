@@ -203,7 +203,7 @@ export const LyriaPlayer: React.FC = () => {
 
   return (
     <div className="App">
-      <header className="top-bar" role="banner">
+      <header className="top-bar" role="banner" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? true : undefined}>
         <h1>ARTS</h1>
         <div className="status-info" aria-live="assertive" aria-atomic="true">
           <span className="sr-only">Estado do sistema:</span>
@@ -211,12 +211,13 @@ export const LyriaPlayer: React.FC = () => {
         </div>
       </header>
 
-      <main className="main-content" role="main">
+      <main className="main-content" role="main" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? true : undefined}>
         <button 
           className="big-button btn-settings"
           onClick={() => setIsSettingsOpen(true)}
           onMouseEnter={() => announce("Definições", "settings")}
           aria-label="Abrir definições do sistema"
+          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-keyboard"></i>
@@ -229,6 +230,7 @@ export const LyriaPlayer: React.FC = () => {
           onClick={() => handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
           onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause")}
           aria-label={isPaused ? "Iniciar sistema e retomar deteção" : "Pausar sistema e parar áudio"}
+          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className={`fa-regular ${isPaused ? 'fa-circle-play' : 'fa-circle-pause'}`}></i>
@@ -241,6 +243,7 @@ export const LyriaPlayer: React.FC = () => {
           onClick={() => handleActionWithCheck(stopAll, !!activePainting || isProcessing, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
           onMouseEnter={() => announce("Procurar outro quadro", "stop_audio")}
           aria-label="Procurar outro quadro"
+          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-circle-stop"></i>
@@ -262,8 +265,9 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description")}
-          disabled={isDescriptionPlaying}
+          disabled={isDescriptionPlaying || isSettingsOpen || isModalOpen}
           aria-label={descriptionText ? "Tocar Áudio-descrição da obra" : "Áudio-descrição não disponível"}
+          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-comment-dots"></i>
@@ -285,8 +289,9 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis")}
-          disabled={isAnalysisPlaying}
+          disabled={isAnalysisPlaying || isSettingsOpen || isModalOpen}
           aria-label={analysisText ? "Tocar Análise Detalhada da obra e efeitos sonoros" : "Análise não disponível"}
+          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-eye"></i>
@@ -308,8 +313,9 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention")}
-          disabled={isIntentionPlaying}
+          disabled={isIntentionPlaying || isSettingsOpen || isModalOpen}
           aria-label={authorsIntentionText ? "Tocar Intenção do Autor da obra" : "Intenção do Autor não disponível"}
+          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-lightbulb"></i>

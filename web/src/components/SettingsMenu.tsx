@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { Settings } from '../types/settings';
 
 interface SettingsMenuProps {
@@ -9,8 +9,23 @@ interface SettingsMenuProps {
 }
 
 export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, onClose, announce }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (dialogRef.current) {
+      dialogRef.current.focus();
+    }
+  }, []);
+
   return (
-    <div className="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div 
+      className="settings-overlay" 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby="settings-title"
+      ref={dialogRef}
+      tabIndex={-1}
+    >
       <div className="settings-header">
         <h2 id="settings-title">Definições</h2>
         <button 
