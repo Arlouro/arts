@@ -1,6 +1,7 @@
 import cv2
 import json
 import os
+import numpy as np
 
 def identify_painting(captured_path, paintings_json_path):
 
@@ -35,8 +36,8 @@ def identify_painting(captured_path, paintings_json_path):
         return None
     
     best_match = None
-    max_matches = 0
-    second_max_matches = 0
+    max_inliers = 0
+    second_max_inliers = 0
 
     json_dir = os.path.dirname(paintings_json_path)
     yolo_root = os.path.abspath(os.path.join(json_dir, "..", ".."))
@@ -60,25 +61,42 @@ def identify_painting(captured_path, paintings_json_path):
         if descriptors2 is None:
             continue
 
-        matches = flann.knnMatch(descriptors, descriptors2, k=2)
+        try:
+            matches = flann.knnMatch(descriptors, descriptors2, k=2)
+        except Exception as e:
+            continue
         
         good_matches = []
-        for m, n in matches:
-            if m.distance < 0.75 * n.distance:
-                good_matches.append(m)                
+        for m_info in matches:
+            if len(m_info) == 2:
+                m, n = m_info
+                # Lowe's ratio test
+                if m.distance < 0.7 * n.distance:
+                    good_matches.append(m)                
 
+        inliers = 0
+        MIN_MATCH_COUNT = 15
         
-        num_matches = len(good_matches)
+        if len(good_matches) >= MIN_MATCH_COUNT:
+            # Extract location of good matches
+            src_pts = np.float32([ keypoints[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
+            dst_pts = np.float32([ keypoints2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
+
+            # Find homography using RANSAC to discard geometric outliers
+            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+            
+            if mask is not None:
+                inliers = np.sum(mask)
         
-        if num_matches > max_matches:
-            second_max_matches = max_matches
-            max_matches = num_matches
+        if inliers > max_inliers:
+            second_max_inliers = max_inliers
+            max_inliers = inliers
             best_match = painting
 
-    MIN_MATCHES = 5
-    if max_matches < MIN_MATCHES:
-        print(f"No good match found. Max matches: {max_matches}")
+    MIN_INLIERS = 15
+    if max_inliers < MIN_INLIERS:
+        print(f"No good geometric match found. Max inliers: {max_inliers}")
         return None
     
-    print(f"Best match: {best_match.get('title')} with {max_matches} matches (second best: {second_max_matches})")
+    print(f"Best match: {best_match.get('title')} with {max_inliers} inliers (second best: {second_max_inliers})")
     return best_match

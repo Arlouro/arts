@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import type { Painting } from "../types/painting.ts";
-import paintingsData from "../../assets/json/paintings.json";
+import paintingsData from "../../public/assets/json/paintings.json";
 
 export const useYolo = (
   onDetection: (data: Painting) => void,

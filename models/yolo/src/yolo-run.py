@@ -148,4 +148,4 @@ while True:
         saved_ids.clear()
         print("Saved IDs cleared.")
 
-    cv2.destroyAllWindows()
+cv2.destroyAllWindows()
