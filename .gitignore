@@ -176,3 +176,6 @@ debug_analysis/
 
 # Extra Scripts
 scripts/
+
+# ignore painting prints
+captured_paintings/
