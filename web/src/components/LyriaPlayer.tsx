@@ -204,7 +204,7 @@ export const LyriaPlayer: React.FC = () => {
   return (
     <div className="App">
       <header className="top-bar" role="banner">
-        <h1>Sonic Canvas</h1>
+        <h1>ARTS</h1>
         <div className="status-info" aria-live="assertive" aria-atomic="true">
           <span className="sr-only">Estado do sistema:</span>
           {currentStatus}
