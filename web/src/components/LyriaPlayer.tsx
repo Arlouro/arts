@@ -304,6 +304,8 @@ export const LyriaPlayer: React.FC = () => {
           onClick={() => {
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
+            } else if (activePainting.id.toString().startsWith("unknown")) {
+              handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível porque a obra é desconhecida e não consta na base de dados.");
             } else if (!authorsIntentionText) {
               handleActionWithCheck(() => {}, false, "A intenção do autor ainda está a ser gerada. Por favor, aguarde.");
             } else if (!settings.intentionEnabled) {
