@@ -101,7 +101,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
           onFocus={() => announce(`${settings.descriptionEnabled ? 'Desativar' : 'Ativar'} Áudio-descrição`, settings.descriptionEnabled ? 'disable_description' : 'enable_description')}
         >
           <i className={`fa-regular ${settings.descriptionEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
-          <span>Descrição: {settings.descriptionEnabled ? 'Ligada' : 'Desligada'}</span>
+          <span>Áudio-descrição: {settings.descriptionEnabled ? 'Ligada' : 'Desligada'}</span>
         </button>
 
         <button 
@@ -111,17 +111,17 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
           onFocus={() => announce(`${settings.analysisEnabled ? 'Desativar' : 'Ativar'} Análise Detalhada`, settings.analysisEnabled ? 'disable_analysis' : 'enable_analysis')}
         >
           <i className={`fa-regular ${settings.analysisEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
-          <span>Análise: {settings.analysisEnabled ? 'Ligada' : 'Desligada'}</span>
+          <span>Análise Detalhada: {settings.analysisEnabled ? 'Ligada' : 'Desligada'}</span>
         </button>
 
         <button 
           className={`setting-button ${settings.sfxEnabled ? 'active' : 'inactive'}`}
           onClick={() => onUpdate({ sfxEnabled: !settings.sfxEnabled })}
-          onMouseEnter={() => announce(`${settings.sfxEnabled ? 'Desativar' : 'Ativar'} Efeitos Sonoros`, settings.sfxEnabled ? 'disable_sfx' : 'enable_sfx')}
-          onFocus={() => announce(`${settings.sfxEnabled ? 'Desativar' : 'Ativar'} Efeitos Sonoros`, settings.sfxEnabled ? 'disable_sfx' : 'enable_sfx')}
+          onMouseEnter={() => announce(`${settings.sfxEnabled ? 'Desativar' : 'Ativar'} Som de objetos identificados`, settings.sfxEnabled ? 'disable_sfx' : 'enable_sfx')}
+          onFocus={() => announce(`${settings.sfxEnabled ? 'Desativar' : 'Ativar'} Som de objetos identificados`, settings.sfxEnabled ? 'disable_sfx' : 'enable_sfx')}
         >
           <i className={`fa-regular ${settings.sfxEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
-          <span>SFX: {settings.sfxEnabled ? 'Ligados' : 'Desligados'}</span>
+          <span>Som de objetos identificados: {settings.sfxEnabled ? 'Ligado' : 'Desligado'}</span>
         </button>
 
         <button 
@@ -131,9 +131,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
           onFocus={() => announce(`${settings.intentionEnabled ? 'Desativar' : 'Ativar'} Intenção do Autor`, settings.intentionEnabled ? 'disable_intention' : 'enable_intention')}
         >
           <i className={`fa-regular ${settings.intentionEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
-          <span>Intenção: {settings.intentionEnabled ? 'Ligada' : 'Desligada'}</span>
+          <span>Intenção do Autor: {settings.intentionEnabled ? 'Ligada' : 'Desligada'}</span>
         </button>
       </div>
     </div>
   );
 };
+

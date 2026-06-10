@@ -290,7 +290,7 @@ export const LyriaPlayer: React.FC = () => {
           }}
           onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis")}
           disabled={isAnalysisPlaying || isSettingsOpen || isModalOpen}
-          aria-label={analysisText ? "Tocar Análise Detalhada da obra e efeitos sonoros" : "Análise não disponível"}
+          aria-label={analysisText ? "Tocar Análise Detalhada da obra e som de objetos identificados" : "Análise não disponível"}
           tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
