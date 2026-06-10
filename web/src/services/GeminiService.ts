@@ -105,7 +105,7 @@ export class GeminiService {
         "DetectedObjects": [
           {
             "Object": "Nome do objeto",
-            "SoundEffectPrompt": "Simple, short, and highly identifiable sound effect prompt. Use literal descriptions like 'low frequency clock ticking', 'soft wind whistling', 'heavy metallic thud'. Ensure it is easily recognizable. (MUST BE IN ENGLISH)",
+            "SoundEffectPrompt": "Simple, short, and highly identifiable sound effect prompt. Use literal descriptions like 'gentle low frequency clock ticking', 'soft wind whistling', 'distant church bell'. Ensure it is easily recognizable, acoustically clear, and pleasant to listen to. Do not generate harsh, sudden, or jarring sounds. (MUST BE IN ENGLISH)",
             "Pan": "A number between -1.0 (left) and 1.0 (right) representing the object's horizontal position in the painting. (e.g., -0.5 for an object on the mid-left, 0.8 for far right, 0.0 for center)"
           }
         ]

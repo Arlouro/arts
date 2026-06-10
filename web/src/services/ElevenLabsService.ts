@@ -47,6 +47,9 @@ export class ElevenLabsService {
   async playAudioBuffer(buffer: AudioBuffer, volume: number = 0.6, pan: number = 0): Promise<void> {
     if (!this.audioContext) return;
     
+    // Scale volume down since user requested SFX to be generally lower and more ambient
+    const adjustedVolume = volume * 0.4; 
+
     return new Promise((resolve) => {
       const source = this.audioContext!.createBufferSource();
       source.buffer = buffer;
@@ -60,13 +63,25 @@ export class ElevenLabsService {
       this.activeNodes.add(nodeEntry);
 
       const now = this.audioContext!.currentTime;
+      const duration = buffer.duration;
+      
+      // Use a longer fade for a smoother, less sudden entrance (max 1.5 seconds, or 1/3 of the track if short)
+      const fadeDuration = Math.min(1.5, duration / 3);
+      
       gainNode.gain.setValueAtTime(0, now);
       
       source.connect(gainNode);
       gainNode.connect(pannerNode);
       pannerNode.connect(this.audioContext!.destination);
       
-      gainNode.gain.linearRampToValueAtTime(volume, now + 0.3);
+      // Smooth Ramp Up
+      gainNode.gain.linearRampToValueAtTime(adjustedVolume, now + fadeDuration);
+      
+      // Smooth Ramp Down before the sound ends
+      if (duration > fadeDuration) {
+        gainNode.gain.setValueAtTime(adjustedVolume, now + duration - fadeDuration);
+        gainNode.gain.linearRampToValueAtTime(0, now + duration);
+      }
       
       source.onended = () => {
         this.activeNodes.delete(nodeEntry);
