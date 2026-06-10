@@ -3,12 +3,19 @@ import { type Settings, DEFAULT_SETTINGS } from '../types/settings';
 
 export const useSettings = () => {
   const [settings, setSettings] = useState<Settings>(() => {
-    const saved = localStorage.getItem('sonic-canvas-settings');
-    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    const saved = localStorage.getItem('arts-settings');
+    if (saved) {
+      try {
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      } catch {
+        return DEFAULT_SETTINGS;
+      }
+    }
+    return DEFAULT_SETTINGS;
   });
 
   useEffect(() => {
-    localStorage.setItem('sonic-canvas-settings', JSON.stringify(settings));
+    localStorage.setItem('arts-settings', JSON.stringify(settings));
   }, [settings]);
 
   const updateSettings = (updates: Partial<Settings>) => {
