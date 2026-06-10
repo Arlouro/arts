@@ -45,7 +45,7 @@ def on_resume():
     is_paused = False
     print("YOLO processing resumed.")
 
-model = YOLO("../weights/best.pt")
+model = YOLO("./weights/best.pt")
 print("YOLO12 Painting Detection model loaded successfully!")
 
 saved_ids = set()

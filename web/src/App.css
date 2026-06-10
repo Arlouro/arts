@@ -21,7 +21,8 @@ body, html, #root {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   height: 100vh;
   width: 100vw;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .App {
@@ -59,13 +60,13 @@ body, html, #root {
 
 .main-content {
   flex: 1 1 0;
-  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: repeat(3, 1fr);
   gap: 1.5vh;
   padding: 1.5vh;
   width: 100%;
+  overflow-y: auto;
 }
 
 .big-button {
@@ -254,6 +255,7 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   padding: 4vh;
+  overflow-y: auto;
 }
 
 .settings-header {

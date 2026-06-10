@@ -86,8 +86,25 @@ export const CameraStream: React.FC<CameraStreamProps> = ({ onFrame, isPaused, i
 
   if (!isActive) return null;
 
+  const isDevMode = import.meta.env.DEV;
+
+  const devStyle: React.CSSProperties = isDevMode ? {
+    opacity: 1,
+    zIndex: 100,
+    width: '30vw',
+    height: 'auto',
+    minWidth: '150px',
+    top: 'auto',
+    bottom: '2vh',
+    left: '2vw',
+    border: '3px solid var(--accent)',
+    borderRadius: '1.5vh',
+    overflow: 'hidden',
+    boxShadow: '0 0 20px rgba(0,0,0,0.8)'
+  } : {};
+
   return (
-    <div className="camera-viewfinder" aria-hidden="true">
+    <div className="camera-viewfinder" aria-hidden="true" style={devStyle}>
       <video
         ref={videoRef}
         autoPlay
@@ -96,7 +113,7 @@ export const CameraStream: React.FC<CameraStreamProps> = ({ onFrame, isPaused, i
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-      <div className="scan-line"></div>
+      {!isDevMode && <div className="scan-line"></div>}
     </div>
   );
 };

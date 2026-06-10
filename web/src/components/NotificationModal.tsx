@@ -21,9 +21,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       isInitialFocus.current = true;
-      // Small delay to ensure focus management and speech synchronization
       const timer = setTimeout(() => {
-        // We announce the full context: Message + Action
         announce(`${message}. Botão Confirmar.`);
         okButtonRef.current?.focus();
       }, 150);
