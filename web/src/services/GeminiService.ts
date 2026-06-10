@@ -72,14 +72,14 @@ export class GeminiService {
       3. Generate recognizable SFX prompts for specific detected objects.
 
       ### OUTPUT REQUIREMENTS:
-      - **Language:** All JSON string values MUST be in European Portuguese (PT-PT).
+      - **Language:** Strings intended for user playback (ArtDescription, ArtAnalysis, DetectedEmotions, Object) MUST be in European Portuguese (PT-PT). Strings intended for AI generation models (MusicPrompt.Prompt and SoundEffectPrompt) MUST be strictly in English.
       - **Format:** Strict JSON. No conversational filler.
       - **Tone:** Analytical, evocative, and psychologically grounded.
       - **Detected Objects Rules:** Ordered by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance) list of up to 5 most relevantly detected objects in the painting
       - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
       - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
-      - **Audio Description Rules:** The description should prioritize essential visual elements and be objective. 
-
+      - **Audio Description Rules:** Write for a Blind or Low Vision audience. Use a clear spatial logic (e.g., foreground to background, or left to right) to help the user construct a mental map. 
+      
       ### JSON SCHEMA & KEYS:
       {
         "ArtDescription": "Breve descrição física da obra.",
@@ -89,7 +89,7 @@ export class GeminiService {
           "Instruments": "Lista de instrumentos baseada na textura visual.",
           "MusicGenre": "Género musical que reflete a época e o sentimento.",
           "Mood": "Atmosfera emocional.",
-          "Prompt": "Detailed descriptive paragraph for music generation using detected emotions and selected instruments, genre and mood.",
+          "Prompt": "Detailed descriptive paragraph for music generation using detected emotions and selected instruments, genre and mood. (MUST BE IN ENGLISH)",
           "Config": {
             "Guidance": "How closely the music should follow the prompt (0.0-6.0).",
             "bpm": "Suggested tempo in beats per minute. (60-200)",
@@ -105,7 +105,8 @@ export class GeminiService {
         "DetectedObjects": [
           {
             "Object": "Nome do objeto",
-            "SoundEffectPrompt": "Simple, short, and highly identifiable sound effect prompt. Use literal descriptions like 'low frequency clock ticking', 'soft wind whistling', 'heavy metallic thud'. Ensure it is easily recognizable."
+            "SoundEffectPrompt": "Simple, short, and highly identifiable sound effect prompt. Use literal descriptions like 'low frequency clock ticking', 'soft wind whistling', 'heavy metallic thud'. Ensure it is easily recognizable. (MUST BE IN ENGLISH)",
+            "Pan": "A number between -1.0 (left) and 1.0 (right) representing the object's horizontal position in the painting. (e.g., -0.5 for an object on the mid-left, 0.8 for far right, 0.0 for center)"
           }
         ]
       }`;

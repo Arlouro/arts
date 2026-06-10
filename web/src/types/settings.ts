@@ -1,15 +1,19 @@
 export interface Settings {
   masterVolume: number;
   musicEnabled: boolean;
-  ttsEnabled: boolean;
+  descriptionEnabled: boolean;
+  analysisEnabled: boolean;
   sfxEnabled: boolean;
+  intentionEnabled: boolean;
   ttsRate: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   masterVolume: 0.8,
   musicEnabled: true,
-  ttsEnabled: true,
+  descriptionEnabled: true,
+  analysisEnabled: true,
   sfxEnabled: true,
+  intentionEnabled: true,
   ttsRate: 1.0,
 };

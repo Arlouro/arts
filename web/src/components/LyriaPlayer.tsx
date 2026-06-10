@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useOrchestrator } from '../hooks/useOrchestrator';
 import { SettingsMenu } from './SettingsMenu';
+import { NotificationModal } from './NotificationModal';
 import type { Painting } from '../types/painting';
 
 const IS_DEV_MODE = true; 
@@ -12,20 +13,55 @@ export const LyriaPlayer: React.FC = () => {
     detectionStatus,
     descriptionText,
     analysisText,
+    authorsIntentionText,
     isPaused,
+    isDescriptionPlaying,
+    isAnalysisPlaying,
+    isIntentionPlaying,
     settings,
     updateSettings,
     playDescription,
     playAnalysis,
+    playAuthorsIntention,
     togglePause,
     processNewDetection,
+    setGlobalDucking,
     stopAll 
   } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, import.meta.env.VITE_ELEVENLABS_API_KEY);
 
   const [paintings, setPaintings] = useState<any[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
 
-  // Load paintings only if in dev mode for simulation
+  // Audio announcement tracking
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastAnnouncedKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (!hasInteracted) {
+        setHasInteracted(true);
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0;
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+
+    window.addEventListener('click', handleInteraction, { once: true });
+    window.addEventListener('keydown', handleInteraction, { once: true });
+    window.addEventListener('touchstart', handleInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [hasInteracted]);
+
   useEffect(() => {
     if (IS_DEV_MODE) {
       fetch('/assets/json/paintings.json')
@@ -35,7 +71,6 @@ export const LyriaPlayer: React.FC = () => {
     }
   }, []);
 
-  // Map backend status to user-friendly Portuguese for screen readers
   const statusMessages: Record<string, string> = {
     idle: "À procura de obra...",
     focusing: "Obra detetada. Por favor, aguarde o foco.",
@@ -44,30 +79,67 @@ export const LyriaPlayer: React.FC = () => {
     processing: "A analisar o contexto emocional da obra..."
   };
 
-  const announce = (text: string) => {
-    // Stop any current speech
+  const announce = (text: string, key?: string) => {
+    // Stop any current TTS
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-PT';
-    window.speechSynthesis.speak(utterance);
+    
+    // Stop any current UI audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    
+    lastAnnouncedKey.current = key || null;
+    setGlobalDucking(true);
+
+    if (key && hasInteracted) {
+      const audio = new Audio(`/assets/audio/ui/${key}.wav`);
+      currentAudioRef.current = audio;
+      audio.volume = settings.masterVolume;
+      
+      audio.onended = () => {
+        setGlobalDucking(false);
+        if (currentAudioRef.current === audio) {
+          currentAudioRef.current = null;
+          lastAnnouncedKey.current = null;
+        }
+      };
+
+      audio.play().catch(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-PT';
+        utterance.onend = () => setGlobalDucking(false);
+        window.speechSynthesis.speak(utterance);
+      });
+    } else if (hasInteracted) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-PT';
+      utterance.onend = () => {
+        setGlobalDucking(false);
+        lastAnnouncedKey.current = null;
+      };
+      window.speechSynthesis.speak(utterance);
+    } else {
+      setGlobalDucking(false);
+    }
   };
 
-  // Automatic Status Announcer
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || !hasInteracted) return;
 
-    if (isProcessing) {
-      announce("A gerar soundscape emocional.");
-    } else if (activePainting) {
-      announce(`Quadro identificado: ${activePainting.title}.`);
+    if (isProcessing && activePainting) {
+      announce(`Quadro identificado: ${activePainting.title}. A gerar soundscape emocional.`, `painting_${activePainting.id}`);
+    } else if (!isProcessing && activePainting) {
+      
     } else if (detectionStatus === 'idle') {
-      announce("À procura de um quadro.");
+      announce("À procura de um quadro.", "searching_painting");
     } else if (detectionStatus === 'focusing') {
-      announce("Quadro detetado. Por favor, mantenha a câmara parada.");
+      announce("Quadro detetado. Por favor, mantenha a câmara parada.", "painting_detected_focus");
     } else if (detectionStatus === 'need_center') {
-      announce("Por favor, centre o quadro no ecrã.");
+      announce("Por favor, centre o quadro no ecrã.", "center_painting");
     }
-  }, [isProcessing, activePainting?.id, detectionStatus, isPaused]);
+  }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted]);
 
   const currentStatus = activePainting 
     ? `Obra detetada: ${activePainting.title}. ${isProcessing ? "A analisar..." : ""}` 
@@ -75,25 +147,23 @@ export const LyriaPlayer: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isSettingsOpen) {
-        if (event.key === 'Escape') setIsSettingsOpen(false);
+      if (isSettingsOpen || isModalOpen) {
+        if (event.key === 'Escape') {
+          setIsSettingsOpen(false);
+          setIsModalOpen(false);
+        }
         return;
       }
 
-      // Only trigger global shortcuts if NOT focused on a button
       const isFocusedOnActionable = document.activeElement?.tagName === 'BUTTON' || document.activeElement?.tagName === 'INPUT';
 
-      if (event.key === 'Enter') {
-        // Removed global shortcut for description as per request
-      }
-      if (event.key === ' ') { // Space for toggle
+      if (event.key === ' ') {
         if (!isFocusedOnActionable) {
-          event.preventDefault(); // Prevent page scroll
+          event.preventDefault();
           togglePause();
         }
       }
 
-      // Simulation key (only enabled if IS_DEV_MODE is true)
       if (IS_DEV_MODE && event.key === '«' && paintings.length > 0) {
         const randomIndex = Math.floor(Math.random() * paintings.length);
         const rawPainting = paintings[randomIndex];
@@ -118,7 +188,16 @@ export const LyriaPlayer: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [descriptionText, playDescription, togglePause, paintings, processNewDetection, isSettingsOpen]);
+  }, [descriptionText, playDescription, togglePause, paintings, processNewDetection, isSettingsOpen, isModalOpen]);
+
+  const handleActionWithCheck = (action: () => void, condition: boolean, message: string) => {
+    if (condition) {
+      action();
+    } else {
+      setModalMessage(message);
+      setIsModalOpen(true);
+    }
+  };
 
   return (
     <div className="App">
@@ -134,8 +213,7 @@ export const LyriaPlayer: React.FC = () => {
         <button 
           className="big-button btn-settings"
           onClick={() => setIsSettingsOpen(true)}
-          onMouseEnter={() => announce("Definições")}
-          onFocus={() => announce("Definições")}
+          onMouseEnter={() => announce("Definições", "settings")}
           aria-label="Abrir definições do sistema"
         >
           <span className="icon" aria-hidden="true">
@@ -146,11 +224,9 @@ export const LyriaPlayer: React.FC = () => {
 
         <button 
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
-          onClick={togglePause}
-          onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar")}
-          onFocus={() => announce(isPaused ? "Iniciar" : "Pausar")}
-          disabled={!activePainting || isProcessing}
-          aria-label={isPaused ? "Iniciar sistema e retomara deteção" : "Pausar sistema e parar áudio"}
+          onClick={() => handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
+          onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause")}
+          aria-label={isPaused ? "Iniciar sistema e retomar deteção" : "Pausar sistema e parar áudio"}
         >
           <span className="icon" aria-hidden="true">
             <i className={`fa-regular ${isPaused ? 'fa-circle-play' : 'fa-circle-pause'}`}></i>
@@ -160,27 +236,31 @@ export const LyriaPlayer: React.FC = () => {
 
         <button 
           className="big-button btn-stop"
-          onClick={stopAll}
-          onMouseEnter={() => announce("Parar Áudio e continuar deteção")}
-          onFocus={() => announce("Parar Áudio e continuar deteção")}
-          disabled={!activePainting && !isProcessing}
-          aria-label="Parar todo o áudio e continuar a procurar quadros"
+          onClick={() => handleActionWithCheck(stopAll, !!activePainting || isProcessing, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
+          onMouseEnter={() => announce("Procurar outro quadro", "stop_audio")}
+          aria-label="Procurar outro quadro"
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-circle-stop"></i>
           </span>
-          <span>Parar Áudio</span>
+          <span>Procurar outro quadro</span>
         </button>
 
         <button 
           className="big-button btn-description"
-          onClick={playDescription}
-          onMouseEnter={() => announce("Tocar Áudio-descrição")}
-          onFocus={() => {
-            announce("Tocar Áudio-descrição");
-            if (descriptionText) playDescription();
+          onClick={() => {
+            if (!activePainting) {
+              handleActionWithCheck(() => {}, false, "Não é possível tocar a áudio-descrição: nenhuma obra foi identificada.");
+            } else if (!descriptionText) {
+              handleActionWithCheck(() => {}, false, "A áudio-descrição ainda está a ser gerada. Por favor, aguarde.");
+            } else if (!settings.descriptionEnabled) {
+              handleActionWithCheck(() => {}, false, "A áudio-descrição está desativada nas definições.");
+            } else {
+              playDescription();
+            }
           }}
-          disabled={!descriptionText || isPaused || !settings.ttsEnabled}
+          onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description")}
+          disabled={isDescriptionPlaying}
           aria-label={descriptionText ? "Tocar Áudio-descrição da obra" : "Áudio-descrição não disponível"}
         >
           <span className="icon" aria-hidden="true">
@@ -191,16 +271,48 @@ export const LyriaPlayer: React.FC = () => {
 
         <button 
           className="big-button btn-analysis"
-          onClick={playAnalysis}
-          onMouseEnter={() => announce("Tocar Análise Detalhada")}
-          onFocus={() => announce("Tocar Análise Detalhada")}
-          disabled={!analysisText || isPaused || !settings.ttsEnabled}
+          onClick={() => {
+            if (!activePainting) {
+              handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhuma obra foi identificada.");
+            } else if (!analysisText) {
+              handleActionWithCheck(() => {}, false, "A análise detalhada ainda está a ser gerada. Por favor, aguarde.");
+            } else if (!settings.analysisEnabled) {
+              handleActionWithCheck(() => {}, false, "A análise detalhada está desativada nas definições.");
+            } else {
+              playAnalysis();
+            }
+          }}
+          onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis")}
+          disabled={isAnalysisPlaying}
           aria-label={analysisText ? "Tocar Análise Detalhada da obra e efeitos sonoros" : "Análise não disponível"}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-eye"></i>
           </span>
           <span>Tocar Análise Detalhada</span>
+        </button>
+
+        <button 
+          className="big-button btn-intention"
+          onClick={() => {
+            if (!activePainting) {
+              handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
+            } else if (!authorsIntentionText) {
+              handleActionWithCheck(() => {}, false, "A intenção do autor ainda está a ser gerada. Por favor, aguarde.");
+            } else if (!settings.intentionEnabled) {
+              handleActionWithCheck(() => {}, false, "A intenção do autor está desativada nas definições.");
+            } else {
+              playAuthorsIntention();
+            }
+          }}
+          onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention")}
+          disabled={isIntentionPlaying}
+          aria-label={authorsIntentionText ? "Tocar Intenção do Autor da obra" : "Intenção do Autor não disponível"}
+        >
+          <span className="icon" aria-hidden="true">
+            <i className="fa-regular fa-lightbulb"></i>
+          </span>
+          <span>Tocar Intenção do Autor</span>
         </button>
       </main>
 
@@ -212,6 +324,13 @@ export const LyriaPlayer: React.FC = () => {
           announce={announce}
         />
       )}
+
+      <NotificationModal 
+        isOpen={isModalOpen}
+        message={modalMessage}
+        onClose={() => setIsModalOpen(false)}
+        announce={announce}
+      />
 
       <footer className="status-overlay sr-only" aria-live="polite">
         {isProcessing ? "A processar com inteligência artificial..." : ""}

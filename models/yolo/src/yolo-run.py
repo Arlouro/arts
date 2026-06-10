@@ -5,12 +5,27 @@ from identification import identify_painting
 import socketio
 import shutil
 import base64
+import cv2
 
 sio = socketio.Client()
 try:
     sio.connect('http://localhost:8000', transports=['websocket'])
 except:
     sio.connect('http://localhost:8000')
+
+is_paused = False
+
+@sio.on('pause_detection')
+def on_pause():
+    global is_paused
+    is_paused = True
+    print("YOLO processing paused by frontend to save performance.")
+
+@sio.on('resume_detection')
+def on_resume():
+    global is_paused
+    is_paused = False
+    print("YOLO processing resumed.")
 
 model = YOLO("../weights/best.pt")
 print("YOLO12 Painting Detection model loaded successfully!")
@@ -24,17 +39,35 @@ detection_start_times = {}
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-results = model.track(
-    source=0, 
-    show=True, 
-    stream=True, 
-    conf=0.70, 
-    persist=True, 
-    device="cpu",
-    verbose=False
-)
+cap = cv2.VideoCapture(0)
 
-for r in results:
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    if is_paused:
+        cv2.putText(frame, "DETECTION PAUSED (AUDIO PLAYING)", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        cv2.imshow("Sonic Canvas - YOLO Tracking", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+        continue
+
+    results = model.track(
+        source=frame, 
+        conf=0.70, 
+        persist=True, 
+        device="cpu",
+        verbose=False
+    )
+    
+    r = results[0]
+
+    annotated_frame = r.plot()
+    cv2.imshow("Sonic Canvas - YOLO Tracking", annotated_frame)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
+
     if r.boxes.id is not None:
         ids = r.boxes.id.int().cpu().tolist()
         current_time = time.time()
@@ -53,7 +86,6 @@ for r in results:
                     if os.path.exists(id_save_path):
                         shutil.rmtree(id_save_path, ignore_errors=True)
                     
-                    
                     coords_norm = r.boxes.xywhn[i]
                     print(f"Normalized bounding box for ID {obj_id}: {coords_norm}")
 
@@ -66,10 +98,11 @@ for r in results:
                         sio.emit('status_update', {'status': 'need_center'})
                         continue
 
-                    r[i].save_crop(save_dir=id_save_path)
-            
+                    os.makedirs(os.path.join(id_save_path, 'painting'), exist_ok=True)
                     captured_image_path = os.path.join(id_save_path, 'painting', 'im.jpg')
                     
+                    r[i].save_crop(save_dir=id_save_path)
+            
                     if os.path.exists(captured_image_path):
                         painting_info = identify_painting(captured_image_path, paintings_json)
                         
@@ -94,3 +127,6 @@ for r in results:
     if len(saved_ids) >= 50: 
         saved_ids.clear()
         print("Saved IDs cleared.")
+
+cap.release()
+cv2.destroyAllWindows()

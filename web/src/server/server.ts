@@ -27,6 +27,16 @@ io.on("connection", (socket) => {
     io.emit("painting_detected", data);
   });
 
+  socket.on("pause_detection", () => {
+    console.log("Pausing YOLO detection to save performance.");
+    io.emit("pause_detection");
+  });
+
+  socket.on("resume_detection", () => {
+    console.log("Resuming YOLO detection.");
+    io.emit("resume_detection");
+  });
+
   socket.on("status_update", (data: { status: string }) => {
     console.log("Status update:", data);
     io.emit("status_update", data);

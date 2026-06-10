@@ -4,7 +4,7 @@ import { decode } from "base64-arraybuffer";
 export class GeminiTTSService {
   private gemini: GoogleGenAI;
   private audioContext: AudioContext | null = null;
-  private activeSources: Set<AudioBufferSourceNode> = new Set();
+  private activeNodes: Set<{ source: AudioBufferSourceNode, gainNode: GainNode }> = new Set();
 
   constructor(apiKey: string) {
     this.gemini = new GoogleGenAI({ apiKey });
@@ -55,35 +55,59 @@ export class GeminiTTSService {
 
   async playAudioBuffer(buffer: AudioBuffer, volume: number = 1.0): Promise<void> {
     if (!this.audioContext) return;
-    
+
+    this.stopAll(0.3);
+
     return new Promise((resolve) => {
       const source = this.audioContext!.createBufferSource();
       source.buffer = buffer;
-      this.activeSources.add(source);
       
       const gainNode = this.audioContext!.createGain();
-      gainNode.gain.setValueAtTime(0, this.audioContext!.currentTime);
+      const nodeEntry = { source, gainNode };
+      this.activeNodes.add(nodeEntry);
+      
+      const now = this.audioContext!.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
       
       source.connect(gainNode);
       gainNode.connect(this.audioContext!.destination);
       
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext!.currentTime + 0.1);
+      gainNode.gain.linearRampToValueAtTime(volume, now + 0.3);
       
       source.onended = () => {
-        this.activeSources.delete(source);
+        this.activeNodes.delete(nodeEntry);
         resolve();
       };
-      source.start(0);
+      source.start(now);
     });
   }
 
-  public stopAll() {
-    this.activeSources.forEach(source => {
+  public setVolume(volume: number, fadeDuration = 0.3) {
+    if (!this.audioContext) return;
+    const now = this.audioContext.currentTime;
+    
+    this.activeNodes.forEach(({ gainNode }) => {
       try {
-        source.stop();
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(volume, now + fadeDuration);
       } catch (e) {}
     });
-    this.activeSources.clear();
+  }
+
+  public stopAll(fadeDuration = 0.3) {
+    if (!this.audioContext) return;
+    const now = this.audioContext.currentTime;
+    
+    this.activeNodes.forEach(({ source, gainNode }) => {
+      try {
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(0, now + fadeDuration);
+        source.stop(now + fadeDuration);
+      } catch (e) {}
+    });
+    this.activeNodes.clear();
   }
 
   async textToSpeech(text: string): Promise<void> {

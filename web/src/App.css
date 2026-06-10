@@ -104,7 +104,7 @@ body, html, #root {
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(5, 1fr);
+    grid-template-rows: repeat(6, 1fr);
     gap: 1vh;
     padding: 1vh;
   }
@@ -155,9 +155,53 @@ body, html, #root {
 .btn-description { border-bottom: 1vh solid var(--accent); }
 .btn-analysis { border-bottom: 1vh solid var(--success); }
 .btn-settings { border-bottom: 1vh solid var(--text-muted); }
-.btn-pause { border-bottom: 1vh solid #ff9800; } /* Orange for Pause */
+.btn-pause { border-bottom: 1vh solid #ff9800; }
 .btn-pause.paused { border-bottom-color: var(--success); }
-.btn-stop { border-bottom: 1vh solid var(--danger); } /* Red for Stop */
+.btn-stop { border-bottom: 1vh solid var(--danger); }
+.btn-intention { border-bottom: 1vh solid #e91e63; }
+
+.notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2vh;
+}
+
+.notification-content {
+  background: var(--card-bg);
+  border: 0.8vh solid var(--accent);
+  border-radius: 3vh;
+  padding: 5vh;
+  max-width: 90vw;
+  width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4vh;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+.notification-message {
+  font-size: clamp(1.2rem, 3vh, 2.5rem);
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.btn-ok {
+  border-bottom: 1vh solid var(--success) !important;
+  max-width: 250px;
+  height: auto !important;
+  padding: 2vh 4vh !important;
+}
 
 
 .status-overlay {
@@ -170,7 +214,6 @@ body, html, #root {
   border-top: 1px solid #333;
 }
 
-/* Settings Menu */
 .settings-overlay {
   position: fixed;
   top: 0;
@@ -215,13 +258,13 @@ body, html, #root {
 .settings-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 1fr;
   gap: 3vh;
 }
 
 .setting-item {
-  grid-column: span 2;
+  grid-column: 1 / -1;
   background: var(--card-bg);
   padding: 2vh;
   border-radius: 15px;

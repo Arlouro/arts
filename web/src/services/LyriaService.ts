@@ -118,6 +118,9 @@ export class LyriaService {
       this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
       this.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.3);
     }
+    if (this.session) {
+      this.session.pause();
+    }
     this.setStatus('idle');
   }
 
@@ -125,6 +128,9 @@ export class LyriaService {
     if (this.gainNode && this.audioContext) {
       this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
       this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.3);
+    }
+    if (this.session) {
+      this.session.play();
     }
     this.setStatus('playing');
   }

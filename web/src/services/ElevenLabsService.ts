@@ -3,7 +3,7 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 export class ElevenLabsService {
   private client: ElevenLabsClient;
   private audioContext: AudioContext | null = null;
-  private activeSources: Set<AudioBufferSourceNode> = new Set();
+  private activeNodes: Set<{ source: AudioBufferSourceNode, gainNode: GainNode }> = new Set();
 
   constructor(apiKey: string) {
     this.client = new ElevenLabsClient({
@@ -31,7 +31,7 @@ export class ElevenLabsService {
       });
 
       const chunks: Uint8Array[] = [];
-      for await (const chunk of audioStream) {
+      for await (const chunk of audioStream as any) {
         chunks.push(chunk);
       }
 
@@ -44,43 +44,70 @@ export class ElevenLabsService {
     }
   }
 
-  async playAudioBuffer(buffer: AudioBuffer, volume: number = 0.6): Promise<void> {
+  async playAudioBuffer(buffer: AudioBuffer, volume: number = 0.6, pan: number = 0): Promise<void> {
     if (!this.audioContext) return;
     
     return new Promise((resolve) => {
       const source = this.audioContext!.createBufferSource();
       source.buffer = buffer;
-      this.activeSources.add(source);
 
       const gainNode = this.audioContext!.createGain();
-      gainNode.gain.setValueAtTime(0, this.audioContext!.currentTime);
-      gainNode.connect(this.audioContext!.destination);
-
-      source.connect(gainNode);
+      const pannerNode = this.audioContext!.createStereoPanner();
       
-      gainNode.gain.linearRampToValueAtTime(volume, this.audioContext!.currentTime + 0.1);
+      pannerNode.pan.value = Math.max(-1, Math.min(1, pan));
+
+      const nodeEntry = { source, gainNode };
+      this.activeNodes.add(nodeEntry);
+
+      const now = this.audioContext!.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+      
+      source.connect(gainNode);
+      gainNode.connect(pannerNode);
+      pannerNode.connect(this.audioContext!.destination);
+      
+      gainNode.gain.linearRampToValueAtTime(volume, now + 0.3);
       
       source.onended = () => {
-        this.activeSources.delete(source);
+        this.activeNodes.delete(nodeEntry);
         resolve();
       };
-      source.start(0);
+      source.start(now);
     });
   }
 
-  public stopAll() {
-    this.activeSources.forEach(source => {
+  public setVolume(volume: number, fadeDuration = 0.3) {
+    if (!this.audioContext) return;
+    const now = this.audioContext.currentTime;
+    
+    this.activeNodes.forEach(({ gainNode }) => {
       try {
-        source.stop();
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(volume, now + fadeDuration);
       } catch (e) {}
     });
-    this.activeSources.clear();
   }
 
-  async generateAndPlaySfx(prompt: string): Promise<void> {
+  public stopAll(fadeDuration = 0.3) {
+    if (!this.audioContext) return;
+    const now = this.audioContext.currentTime;
+    
+    this.activeNodes.forEach(({ source, gainNode }) => {
+      try {
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(0, now + fadeDuration);
+        source.stop(now + fadeDuration);
+      } catch (e) {}
+    });
+    this.activeNodes.clear();
+  }
+
+  async generateAndPlaySfx(prompt: string, pan: number = 0): Promise<void> {
     const buffer = await this.generateSfxBuffer(prompt);
     if (buffer) {
-      await this.playAudioBuffer(buffer);
+      await this.playAudioBuffer(buffer, 0.6, pan);
     }
   }
 }

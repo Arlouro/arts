@@ -167,3 +167,12 @@ vite.config.ts.timestamp-*
 models/yolo/runs/
 models/yolo/datasets/
 __pycache__/
+
+# Test Reports
+test-reports/
+
+# Debug files
+debug_analysis/
+
+# Extra Scripts
+scripts/

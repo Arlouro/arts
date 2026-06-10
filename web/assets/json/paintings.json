@@ -1,30 +1,29 @@
 {
-  "paintings":
-  [
+  "paintings": [
     {
       "$id": 1,
-      "title": "The Policeman's Daughter",
+      "title": "A Filha do Polícia",
       "artist": "Paula Rego",
       "year": "1987",
-      "style": "Expressionism",
-      "genre": "Genre painting",
-      "medium": "Unknown",
-      "description": "A famous painting depicting a swirling night sky over a quiet town.",
-      "authors_intention": "To capture the emotional turmoil and complexity of human relationships.",
-      "context": "No final da década de 1980, Paula Rego criou uma série de pinturas para explorar as relações familiares íntimas. Todas as relações parecem de certa forma disfuncionais, particularmente as que existem entre pais e filhas. A Filha do Policial está zangada, com a mão enfiada na bota do pai enquanto a limpa; um esboço para a pintura revela a sua génese numa relação um pouco mais inocente, uma menina mais nova, a acariciar a bota enquanto a limpa, com um castelo de brincar a simbolizar segurança aos seus pés. Na pintura, o castelo transformou-se num gato desconfiado, e a pose da menina, retirada de uma fotografia sexualmente explícita de Robert Mapplethorpe, é tudo menos inocente.",
+      "style": "Expressionismo",
+      "genre": "Pintura de género",
+      "medium": "Desconhecido",
+      "description": "Uma pintura famosa que retrata um céu noturno rodopiante sobre uma cidade tranquila.",
+      "authors_intention": "Capturar o tumulto emocional e a complexidade das relações humanas.",
+      "context": "No final da década de 1980, Paula Rego criou uma série de pinturas para explorar as relações familiares íntimas. Todas as relações parecem de certa forma disfuncionais, particularmente as que existem entre pais e filhas. A Filha do Polícia está zangada, com a mão enfiada na bota do pai enquanto a limpa; um esboço para a pintura revela a sua génese numa relação um pouco mais inocente, uma menina mais nova, a acariciar a bota enquanto a limpa, com um castelo de brincar a simbolizar segurança aos seus pés. Na pintura, o castelo transformou-se num gato desconfiado, e a pose da menina, retirada de uma fotografia sexualmente explícita de Robert Mapplethorpe, é tudo menos inocente.",
       "imagePath": "assets/images/policeman-daughter.jpg"
     },
     {
       "$id": 2,
-      "title": "The Pesistence of Memory",
-      "artist": "Salvador Dali",
+      "title": "A Persistência da Memória",
+      "artist": "Salvador Dalí",
       "year": "1931",
-      "style": "Surrealism",
-      "genre": "Surrealist painting",
-      "medium": "Oil on canvas",
-      "description": "A surreal painting featuring melting clocks draped over a barren landscape.",
-      "authors_intention": "Dalí clarified that the soft watches were not inspired by physics, but by the camembert of time — specifically the sight of Camembert cheese melting in the sun.",
-      "context": "The Persistence of Memory is one of Salvador Dalí's most famous works, created in 1931. The painting is a prime example of surrealism, a movement that sought to unlock the creative potential of the unconscious mind. The melting clocks are often interpreted as a symbol of the relativity of time and the fluidity of human perception. Dalí's intention was to challenge traditional notions of time and reality, inviting viewers to question their own perceptions and the nature of existence.",
+      "style": "Surrealismo",
+      "genre": "Pintura surrealista",
+      "medium": "Óleo sobre tela",
+      "description": "Uma pintura surrealista que apresenta relógios derretidos sobre uma paisagem árida.",
+      "authors_intention": "Dalí esclareceu que os relógios moles não foram inspirados na física, mas no camembert do tempo — especificamente na visão de queijo Camembert a derreter ao sol.",
+      "context": "A Persistência da Memória é uma das obras mais famosas de Salvador Dalí, criada em 1931. A pintura é um exemplo primordial do surrealismo, um movimento que procurava desbloquear o potencial criativo do inconsciente. Os relógios a derreter são frequentemente interpretados como um símbolo da relatividade do tempo e da fluidez da perceção humana. A intenção de Dalí era desafiar as noções tradicionais de tempo e realidade, convidando os espetadores a questionar as suas próprias perceções e a natureza da existência.",
       "imagePath": "assets/images/persistence-of-memory.jpg"
     },
     {
@@ -32,12 +31,12 @@
       "title": "Guernica",
       "artist": "Pablo Picasso",
       "year": "1937",
-      "style": "Cubism",
-      "genre": "Political painting",
-      "medium": "Oil on canvas",
-      "description": "A powerful political painting depicting the horrors of war, specifically the bombing of Guernica during the Spanish Civil War.",
-      "authors_intention": "In the panel on which I am working, which I call Guernica, I clearly express my abhorrence of the military caste which has sunk Spain into an ocean of pain and death.",
-      "context": "Guernica is a monumental painting created by Pablo Picasso in 1937. It was inspired by the bombing of the town of Guernica during the Spanish Civil War. The painting is a powerful anti-war statement, depicting the suffering and chaos caused by the bombing. Picasso's intention was to raise awareness about the atrocities of war and to express his outrage at the violence inflicted upon innocent civilians. Guernica has since become an iconic symbol of the horrors of war and a testament to the resilience of the human spirit.",
+      "style": "Cubismo",
+      "genre": "Pintura política",
+      "medium": "Óleo sobre tela",
+      "description": "Uma poderosa pintura política que retrata os horrores da guerra, especificamente o bombardeamento de Guernica durante a Guerra Civil Espanhola.",
+      "authors_intention": "No painel em que estou a trabalhar, ao qual chamo Guernica, expresso claramente a minha aversão pela casta militar que afundou a Espanha num oceano de dor e morte.",
+      "context": "Guernica é uma pintura monumental criada por Pablo Picasso em 1937. Foi inspirada no bombardeamento da cidade de Guernica durante a Guerra Civil Espanhola. A pintura é uma poderosa declaração anti-guerra, retratando o sofrimento e o caos causados pelo bombardeamento. A intenção de Picasso era consciencializar sobre as atrocidades da guerra e expressar a sua indignação pela violência infligida a civis inocentes. Desde então, Guernica tornou-se um símbolo icónico dos horrores da guerra e um testemunho da resiliência do espírito humano.",
       "imagePath": "assets/images/guernica.jpg"
     },
     {
@@ -45,12 +44,12 @@
       "title": "Nighthawks",
       "artist": "Edward Hopper",
       "year": "1942",
-      "style": "Realism",
-      "genre": "Citiscape",
-      "medium": "Oil on canvas",
-      "description": "A painting depicting people sitting in a diner late at night, evoking feelings of loneliness and isolation.",
-      "authors_intention": "Unconsciously, probably, I was painting the loneliness of a large city.",
-      "context": "Nighthawks is a famous painting by Edward Hopper, created in 1942. The painting captures a moment of quiet solitude in an urban setting, with three customers sitting in a brightly lit diner late at night. Hopper's intention was to convey the sense of isolation and loneliness that can be experienced in a bustling city. The painting has become an iconic representation of urban life and the human condition, resonating with viewers for its emotional depth and evocative atmosphere.",
+      "style": "Realismo",
+      "genre": "Paisagem urbana",
+      "medium": "Óleo sobre tela",
+      "description": "Uma pintura que retrata pessoas sentadas num restaurante tarde da noite, evocando sentimentos de solidão e isolamento.",
+      "authors_intention": "Inconscientemente, de forma provável, eu estava a pintar a solidão de uma grande cidade.",
+      "context": "Nighthawks é uma pintura famosa de Edward Hopper, criada em 1942. A pintura captura um momento de solidão silenciosa num ambiente urbano, com três clientes sentados num restaurante intensamente iluminado, tarde da noite. A intenção de Hopper era transmitir a sensação de isolamento e solidão que pode ser vivenciada numa cidade agitada. A pintura tornou-se uma representação icónica da vida urbana e da condição humana, ressoando com os espetadores pela sua profundidade emocional e atmosfera evocativa.",
       "imagePath": "assets/images/nighthawks.jpg"
     }
   ]

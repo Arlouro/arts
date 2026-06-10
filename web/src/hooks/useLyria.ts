@@ -11,7 +11,7 @@ export const useLyria = (apiKey: string) => {
     service.onStatusChange = (newStatus) => setStatus(newStatus);
     serviceRef.current = service;
 
-    return () => service.stop();
+    return () => { void service.stop(); };
   }, [apiKey]);
 
   const generateMusic = (prompt: string) => {
