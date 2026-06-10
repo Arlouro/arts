@@ -112,7 +112,7 @@ export class GeminiService {
       }`;
     try {
       const result = await this.gemini.models.generateContent({
-        model: "gemini-2.5-flash", // Used a more stable model instead of experimental 3-flash-preview
+        model: "gemini-3-flash-preview",
         contents: [
           {
             role: "user",
