@@ -112,7 +112,7 @@ export class GeminiService {
       }`;
     try {
       const result = await this.gemini.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash", // Used a more stable model instead of experimental 3-flash-preview
         contents: [
           {
             role: "user",
@@ -127,7 +127,20 @@ export class GeminiService {
         }
       });
 
-      const text = result?.text ?? "{}";
+      let text = result?.text ?? "{}";
+      
+      // Clean potential Markdown JSON blocks returned by the model
+      text = text.trim();
+      if (text.startsWith("```json")) {
+        text = text.slice(7);
+      } else if (text.startsWith("```")) {
+        text = text.slice(3);
+      }
+      if (text.endsWith("```")) {
+        text = text.slice(0, -3);
+      }
+      text = text.trim();
+
       return JSON.parse(text);
 
     } catch (error) {
