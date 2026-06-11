@@ -49,7 +49,7 @@ model = YOLO("./weights/best.pt")
 print("YOLO12 Painting Detection model loaded successfully!")
 
 saved_ids = set()
-START_DELAY = 2
+START_DELAY = 1
 save_path = 'captured_paintings'
 paintings_json = 'assets/json/paintings.json'
 detection_start_times = {}
