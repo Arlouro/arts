@@ -19,6 +19,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
   const [isDescriptionPlaying, setIsDescriptionPlaying] = useState(false);
   const [isAnalysisPlaying, setIsAnalysisPlaying] = useState(false);
   const [isIntentionPlaying, setIsIntentionPlaying] = useState(false);
+  const [isUiAnnouncing, setIsUiAnnouncing] = useState(false);
   const { settings, updateSettings } = useSettings();
 
   const gemini = useMemo(() => new GeminiService(apiKey), [apiKey]);
@@ -109,6 +110,18 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
   const isSfxActiveRef = useRef(false);
   const sfxPhase1DoneRef = useRef(false);
   const isNarrationPlayingRef = useRef(false);
+  const isUiAnnouncingRef = useRef(false);
+  useEffect(() => { isUiAnnouncingRef.current = isUiAnnouncing; }, [isUiAnnouncing]);
+
+  const waitForSystemVoice = useCallback(async () => {
+    // Give a small head-start for any pending announcements to start
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Poll the system voice status AND our manual UI announcement flag
+    while (window.speechSynthesis.speaking || isUiAnnouncingRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }, []);
 
   const stopSfxLoop = useCallback(() => {
     isSfxActiveRef.current = false;
@@ -188,6 +201,9 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     try {
       setIsDescriptionPlaying(true);
       isNarrationPlayingRef.current = true;
+      
+      await waitForSystemVoice();
+      
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
       await tts.playAudioBuffer(descriptionBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
@@ -198,7 +214,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       setIsDescriptionPlaying(false);
       isNarrationPlayingRef.current = false;
     }
-  }, [lyria, tts, isPaused, settings.descriptionEnabled, settings.musicEnabled, settings.masterVolume]);
+  }, [lyria, tts, isPaused, settings.descriptionEnabled, settings.musicEnabled, settings.masterVolume, waitForSystemVoice]);
 
   const playAnalysis = useCallback(async () => {
     if (!analysisBufferRef.current || isPaused || !settings.analysisEnabled) return;
@@ -206,6 +222,9 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     try {
       setIsAnalysisPlaying(true);
       isNarrationPlayingRef.current = true;
+      
+      await waitForSystemVoice();
+
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
       await tts.playAudioBuffer(analysisBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
@@ -216,7 +235,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       setIsAnalysisPlaying(false);
       isNarrationPlayingRef.current = false;
     }
-  }, [lyria, tts, isPaused, settings.analysisEnabled, settings.musicEnabled, settings.masterVolume]);
+  }, [lyria, tts, isPaused, settings.analysisEnabled, settings.musicEnabled, settings.masterVolume, waitForSystemVoice]);
 
   const playAuthorsIntention = useCallback(async () => {
     if (!authorsIntentionBufferRef.current || isPaused || !settings.intentionEnabled) return;
@@ -224,6 +243,9 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     try {
       setIsIntentionPlaying(true);
       isNarrationPlayingRef.current = true;
+      
+      await waitForSystemVoice();
+
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
       await tts.playAudioBuffer(authorsIntentionBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
@@ -234,7 +256,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       setIsIntentionPlaying(false);
       isNarrationPlayingRef.current = false;
     }
-  }, [lyria, tts, isPaused, settings.intentionEnabled, settings.musicEnabled, settings.masterVolume]);
+  }, [lyria, tts, isPaused, settings.intentionEnabled, settings.musicEnabled, settings.masterVolume, waitForSystemVoice]);
 
   const processNewDetection = useCallback(async (painting: Painting) => {
     if (activePainting !== null || painting.id === lastPaintingId.current || isProcessing || isPaused) {
@@ -344,6 +366,9 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
         try {
           const introBuffer = await introBufferPromise;
           if (introBuffer && !isPaused) {
+            // Wait for system voice/announcements to finish
+            await waitForSystemVoice();
+
             activeTtsCountRef.current++;
             try {
               if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
@@ -369,7 +394,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled]);
+  }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, waitForSystemVoice]);
 
   const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus);
   emitRef.current = emit;
@@ -403,6 +428,8 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     isDescriptionPlaying,
     isAnalysisPlaying,
     isIntentionPlaying,
+    isUiAnnouncing,
+    setIsUiAnnouncing,
     settings,
     updateSettings,
     playDescription,

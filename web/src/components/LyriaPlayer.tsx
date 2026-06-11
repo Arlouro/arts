@@ -19,6 +19,7 @@ export const LyriaPlayer: React.FC = () => {
     isDescriptionPlaying,
     isAnalysisPlaying,
     isIntentionPlaying,
+    setIsUiAnnouncing,
     settings,
     updateSettings,
     playDescription,
@@ -109,6 +110,7 @@ export const LyriaPlayer: React.FC = () => {
     
     lastAnnouncedKey.current = key || null;
     setGlobalDucking(true);
+    setIsUiAnnouncing(true);
 
     if (key && hasInteracted) {
       const audio = new Audio(`/assets/audio/ui/${key}.wav`);
@@ -117,6 +119,7 @@ export const LyriaPlayer: React.FC = () => {
       
       audio.onended = () => {
         setGlobalDucking(false);
+        setIsUiAnnouncing(false);
         if (currentAudioRef.current === audio) {
           currentAudioRef.current = null;
           lastAnnouncedKey.current = null;
@@ -129,6 +132,7 @@ export const LyriaPlayer: React.FC = () => {
         currentTtsUtteranceRef.current = utterance;
         utterance.onend = () => {
           setGlobalDucking(false);
+          setIsUiAnnouncing(false);
           currentTtsUtteranceRef.current = null;
         };
         window.speechSynthesis.speak(utterance);
@@ -139,14 +143,19 @@ export const LyriaPlayer: React.FC = () => {
       currentTtsUtteranceRef.current = utterance;
       utterance.onend = () => {
         setGlobalDucking(false);
+        setIsUiAnnouncing(false);
         lastAnnouncedKey.current = null;
         currentTtsUtteranceRef.current = null;
       };
       window.speechSynthesis.speak(utterance);
     } else {
       setGlobalDucking(false);
+      setIsUiAnnouncing(false);
     }
   };
+
+  const lastCenteringAnnouncementRef = useRef<number>(0);
+  const lastCenteringStatusRef = useRef<string>("");
 
   useEffect(() => {
     if (isPaused || !hasInteracted) return;
@@ -160,7 +169,15 @@ export const LyriaPlayer: React.FC = () => {
     } else if (detectionStatus === 'focusing') {
       announce("Quadro detetado. Por favor, mantenha a câmara parada.", "painting_detected_focus");
     } else if (detectionStatus.startsWith('need_center')) {
-      announce(statusMessages[detectionStatus] || statusMessages['need_center']);
+      const now = Date.now();
+      const isSameStatus = detectionStatus === lastCenteringStatusRef.current;
+      const cooldown = isSameStatus ? 8000 : 4000;
+      
+      if (now - lastCenteringAnnouncementRef.current >= cooldown) {
+        announce(statusMessages[detectionStatus] || statusMessages['need_center'], undefined, true);
+        lastCenteringAnnouncementRef.current = now;
+        lastCenteringStatusRef.current = detectionStatus;
+      }
     }
   }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted]);
 
