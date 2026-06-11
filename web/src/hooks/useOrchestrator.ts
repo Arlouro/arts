@@ -264,6 +264,8 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     }
 
     try {
+      // Immediate state change to block concurrent handle calls
+      setIsProcessing(true);
       emitRef.current?.("pause_detection", {});
       
       if (scanningIntervalRef.current) {

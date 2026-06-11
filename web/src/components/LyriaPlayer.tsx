@@ -387,7 +387,7 @@ export const LyriaPlayer: React.FC = () => {
 
       <CameraStream 
         onFrame={sendFrame} 
-        isPaused={isPaused} 
+        isPaused={isPaused || isProcessing || !!activePainting} 
         isActive={!isSettingsOpen && !isModalOpen} 
       />
     </div>
