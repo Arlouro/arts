@@ -48,15 +48,55 @@ io.on("connection", (socket) => {
     io.emit("status_update", data);
   });
 
-  socket.on("save_analysis", (data: { title: string, analysis: any }) => {
-    const filename = `analysis_${data.title.replace(/\s+/g, '_')}_${Date.now()}.json`;
-    const filePath = path.join(DEBUG_FOLDER, filename);
-    
-    fs.writeFile(filePath, JSON.stringify(data.analysis, null, 2), (err) => {
+  socket.on("save_analysis", (data: { title: string, analysis: any, painting: Painting }) => {
+    const timestamp = Date.now();
+    const folderName = `${data.title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${timestamp}`;
+    const paintingFolder = path.join(DEBUG_FOLDER, folderName);
+
+    if (!fs.existsSync(paintingFolder)) {
+      fs.mkdirSync(paintingFolder, { recursive: true });
+    }
+
+    // Save raw JSON
+    const jsonPath = path.join(paintingFolder, 'analysis.json');
+    fs.writeFile(jsonPath, JSON.stringify(data.analysis, null, 2), (err) => {
+      if (err) console.error("Failed to save JSON analysis:", err);
+    });
+
+    // Save Music Prompt as text file for easy reading
+    if (data.analysis.MusicPrompt?.Prompt) {
+      const promptPath = path.join(paintingFolder, 'music_prompt.txt');
+      fs.writeFile(promptPath, data.analysis.MusicPrompt.Prompt, (err) => {
+        if (err) console.error("Failed to save music prompt text:", err);
+      });
+    }
+
+    // Save a summary report
+    const reportPath = path.join(paintingFolder, 'summary.txt');
+    const summary = `
+Title: ${data.painting?.title || data.title}
+Artist: ${data.painting?.artist || 'Unknown'}
+Year: ${data.painting?.year || 'Unknown'}
+Generated at: ${new Date(timestamp).toLocaleString()}
+
+--- DESCRIPTION ---
+${data.analysis.ArtDescription || 'N/A'}
+
+--- ANALYSIS ---
+${data.analysis.ArtAnalysis || 'N/A'}
+
+--- MUSIC PROMPT ---
+${data.analysis.MusicPrompt?.Prompt || 'N/A'}
+
+--- DETECTED OBJECTS ---
+${(data.analysis.DetectedObjects || []).map((obj: any) => `- ${obj.Object}: ${obj.SoundEffectPrompt}`).join('\n')}
+    `.trim();
+
+    fs.writeFile(reportPath, summary, (err) => {
       if (err) {
-        console.error("Failed to save debug analysis:", err);
+        console.error("Failed to save summary report:", err);
       } else {
-        console.log(`Debug analysis saved to: ${filePath}`);
+        console.log(`Saved analysis results to: ${paintingFolder}`);
       }
     });
   });

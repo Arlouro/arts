@@ -269,7 +269,8 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       // Send for server-side debug logging
       emitRef.current?.("save_analysis", { 
         title: painting.title, 
-        analysis 
+        analysis,
+        painting
       });
 
       const musicPrompt = analysis.MusicPrompt?.Prompt || "";
