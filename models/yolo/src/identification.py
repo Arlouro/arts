@@ -3,6 +3,10 @@ import json
 import os
 import numpy as np
 
+MIN_MATCH_COUNT = 15
+MIN_INLIERS = 15
+DISAMBIGUATION_RATIO = 1.3
+
 def identify_painting(captured_path, paintings_json_path):
 
     if not os.path.exists(captured_path):
@@ -75,7 +79,6 @@ def identify_painting(captured_path, paintings_json_path):
                     good_matches.append(m)                
 
         inliers = 0
-        MIN_MATCH_COUNT = 15
         
         if len(good_matches) >= MIN_MATCH_COUNT:
             # Extract location of good matches
@@ -92,11 +95,18 @@ def identify_painting(captured_path, paintings_json_path):
             second_max_inliers = max_inliers
             max_inliers = inliers
             best_match = painting
+        elif inliers > second_max_inliers:
+            second_max_inliers = inliers
 
-    MIN_INLIERS = 15
     if max_inliers < MIN_INLIERS:
         print(f"No good geometric match found. Max inliers: {max_inliers}")
         return None
+    
+    if second_max_inliers > 0:
+        ratio = max_inliers / second_max_inliers
+        if ratio < DISAMBIGUATION_RATIO:
+            print(f"Ambiguous match rejected. Ratio: {ratio:.2f} (needs to be >= {DISAMBIGUATION_RATIO})")
+            return None
     
     print(f"Best match: {best_match.get('title')} with {max_inliers} inliers (second best: {second_max_inliers})")
     return best_match

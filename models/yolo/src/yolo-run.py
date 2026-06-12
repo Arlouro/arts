@@ -108,7 +108,8 @@ while True:
                     
                     coords_norm = r.boxes.xywhn[i]
                     print(f"Normalized bounding box for ID {obj_id}: {coords_norm}")
-
+                    
+                    #TODO: CHANGE THE WAY THE CENTERED CHECK IS DONE USING A ROLLING EMA
                     # Check if the detected object is approximately centered (10% margin) in the frame
                     if coords_norm[0] > 0.45 and coords_norm[0] < 0.55 and coords_norm[1] > 0.45 and coords_norm[1] < 0.55 and r.boxes.conf[i] > 0.85:
                         print(f"ID {obj_id} is centered in frame. Saving capture.")
