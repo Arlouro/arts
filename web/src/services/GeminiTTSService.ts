@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { decode } from "base64-arraybuffer";
+import { withRetry, isRetryableError } from "../utils/retry.ts";
 
 export class GeminiTTSService {
   private gemini: GoogleGenAI;
@@ -23,32 +24,36 @@ export class GeminiTTSService {
     this.initAudio();
 
     try {
-      const result = await this.gemini.models.generateContent({ 
-        model: "gemini-3.1-flash-tts-preview",
-        contents: [{ role: 'user', parts: [{ text }] }],
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { 
-                voiceName: "Charon"
+      return await withRetry(
+        async () => {
+          const result = await this.gemini.models.generateContent({ 
+            model: "gemini-3.1-flash-tts-preview",
+            contents: [{ role: 'user', parts: [{ text }] }],
+            config: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { 
+                    voiceName: "Charon"
+                  }
+                },
+                languageCode: "pt-PT",
               }
-            },
-            languageCode: "pt-PT",
-          }
-        }
-      });
+            }
+          });
 
-      const audioPart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-      const base64Audio = audioPart?.inlineData?.data;
-      
-      if (!base64Audio) return null;
+          const audioPart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+          const base64Audio = audioPart?.inlineData?.data;
 
-      const arrayBuffer = decode(base64Audio);
-      return await this.pcmToAudioBuffer(arrayBuffer, 24000);
+          if (!base64Audio) throw new Error('TTS returned empty audio data');
 
+          const arrayBuffer = decode(base64Audio);
+          return await this.pcmToAudioBuffer(arrayBuffer, 24000);
+        },
+        { maxAttempts: 3, baseDelayMs: 1500, shouldRetry: isRetryableError }
+      );
     } catch (error) {
-      console.error("TTS generation error:", error);
+      console.error("TTS generation error after retries:", error);
       return null;
     }
   }

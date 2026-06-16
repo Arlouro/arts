@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Painting } from "../types/painting.ts";
+import { withRetry, isRetryableError } from "../utils/retry.ts";
 
 export class GeminiService {
   private gemini: GoogleGenAI;
@@ -111,40 +112,44 @@ export class GeminiService {
         ]
       }`;
     try {
-      const result = await this.gemini.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              imagePart
-            ]
+      return await withRetry(
+        async () => {
+          const result = await this.gemini.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: prompt },
+                  imagePart
+                ]
+              }
+            ],
+            config: {
+              responseMimeType: "application/json"
+            }
+          });
+
+          let text = result?.text ?? "{}";
+
+          // Clean potential Markdown JSON blocks returned by the model
+          text = text.trim();
+          if (text.startsWith("```json")) {
+            text = text.slice(7);
+          } else if (text.startsWith("```")) {
+            text = text.slice(3);
           }
-        ],
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
+          if (text.endsWith("```")) {
+            text = text.slice(0, -3);
+          }
+          text = text.trim();
 
-      let text = result?.text ?? "{}";
-      
-      // Clean potential Markdown JSON blocks returned by the model
-      text = text.trim();
-      if (text.startsWith("```json")) {
-        text = text.slice(7);
-      } else if (text.startsWith("```")) {
-        text = text.slice(3);
-      }
-      if (text.endsWith("```")) {
-        text = text.slice(0, -3);
-      }
-      text = text.trim();
-
-      return JSON.parse(text);
-
+          return JSON.parse(text);
+        },
+        { maxAttempts: 3, baseDelayMs: 1500, shouldRetry: isRetryableError }
+      );
     } catch (error) {
-      console.error("Error analyzing painting:", error);
+      console.error("Error analyzing painting after all retry attempts:", error);
       throw new Error("Failed to analyze painting. Please try again.");
     }
   }

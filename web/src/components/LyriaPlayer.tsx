@@ -8,6 +8,8 @@ import type { Painting } from '../types/painting';
 const IS_DEV_MODE = import.meta.env.VITE_SHOW_CAMERA === 'true'; 
 
 export const LyriaPlayer: React.FC = () => {
+  const [isSearching, setIsSearching] = useState(false);
+
   const { 
     isProcessing, 
     activePainting, 
@@ -29,8 +31,10 @@ export const LyriaPlayer: React.FC = () => {
     processNewDetection,
     setGlobalDucking,
     sendFrame,
+    criticalError,
+    failedTasks,
     stopAll 
-  } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, import.meta.env.VITE_ELEVENLABS_API_KEY);
+  } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, import.meta.env.VITE_ELEVENLABS_API_KEY, isSearching);
 
   const [paintings, setPaintings] = useState<any[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -39,6 +43,9 @@ export const LyriaPlayer: React.FC = () => {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
+  const [modalVariant, setModalVariant] = useState<'warning' | 'error'>('warning');
+
+  const isOverlayActive = isSettingsOpen || isModalOpen || !!criticalError;
 
   // Audio announcement tracking
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -158,7 +165,7 @@ export const LyriaPlayer: React.FC = () => {
   const lastCenteringStatusRef = useRef<string>("");
 
   useEffect(() => {
-    if (isPaused || !hasInteracted) return;
+    if (isPaused || !hasInteracted || !isSearching) return;
 
     if (isProcessing && activePainting) {
       announce(`Quadro identificado: ${activePainting.title}. A gerar soundscape emocional.`, `painting_${activePainting.id}`);
@@ -179,11 +186,13 @@ export const LyriaPlayer: React.FC = () => {
         lastCenteringStatusRef.current = detectionStatus;
       }
     }
-  }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted]);
+  }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted, isSearching]);
 
-  const currentStatus = activePainting 
-    ? `Obra detetada: ${activePainting.title}. ${isProcessing ? "A analisar..." : ""}` 
-    : statusMessages[detectionStatus] || statusMessages.idle;
+  const currentStatus = !isSearching
+    ? "Pronto para iniciar"
+    : activePainting 
+      ? `Obra detetada: ${activePainting.title}. ${isProcessing ? "A analisar..." : ""}` 
+      : statusMessages[detectionStatus] || statusMessages.idle;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -200,7 +209,12 @@ export const LyriaPlayer: React.FC = () => {
       if (event.key === ' ') {
         if (!isFocusedOnActionable) {
           event.preventDefault();
-          togglePause();
+          if (!activePainting) {
+            handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.");
+          } else {
+            togglePause();
+            announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause", true);
+          }
         }
       }
 
@@ -228,20 +242,26 @@ export const LyriaPlayer: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [descriptionText, playDescription, togglePause, paintings, processNewDetection, isSettingsOpen, isModalOpen]);
+  }, [descriptionText, playDescription, togglePause, paintings, processNewDetection, isSettingsOpen, isModalOpen, isSearching, isPaused, activePainting, announce]);
 
-  const handleActionWithCheck = (action: () => void, condition: boolean, message: string) => {
+  const handleActionWithCheck = (action: () => void, condition: boolean, message: string, variant: 'warning' | 'error' = 'warning') => {
     if (condition) {
       action();
     } else {
       setModalMessage(message);
+      setModalVariant(variant);
       setIsModalOpen(true);
     }
   };
 
+  const handleRestartSystem = async () => {
+    await stopAll();
+    setIsSearching(false);
+  };
+
   return (
-    <div className="App">
-      <header className="top-bar" role="banner" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? true : undefined}>
+    <div className="App" aria-roledescription="Aplicação de experiência sonora para obras de arte">
+      <header className="top-bar" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
         <h1>ARTS</h1>
         <div className="status-info" aria-live="assertive" aria-atomic="true">
           <span className="sr-only">Estado do sistema:</span>
@@ -249,13 +269,15 @@ export const LyriaPlayer: React.FC = () => {
         </div>
       </header>
 
-      <main className="main-content" role="main" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? true : undefined}>
-        <button 
+      <main className="main-content" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
+        <h2 className="sr-only">Controlos Principais</h2>
+        <nav aria-label="Ações principais" style={{ display: 'contents' }}>
+          <button type="button"
           className="big-button btn-settings"
           onClick={() => setIsSettingsOpen(true)}
           onMouseEnter={() => announce("Definições", "settings", true)}
           aria-label="Abrir definições do sistema"
-          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
+          tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-keyboard"></i>
@@ -263,12 +285,12 @@ export const LyriaPlayer: React.FC = () => {
           <span>Definições</span>
         </button>
 
-        <button 
+        <button type="button"
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
           onClick={() => handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
           onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause", true)}
           aria-label={isPaused ? "Iniciar sistema e retomar deteção" : "Pausar sistema e parar áudio"}
-          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
+          tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className={`fa-regular ${isPaused ? 'fa-circle-play' : 'fa-circle-pause'}`}></i>
@@ -276,24 +298,38 @@ export const LyriaPlayer: React.FC = () => {
           <span>{isPaused ? 'Iniciar' : 'Pausar'}</span>
         </button>
 
-        <button 
-          className="big-button btn-stop"
-          onClick={() => handleActionWithCheck(stopAll, !!activePainting || isProcessing, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
-          onMouseEnter={() => announce("Procurar outro quadro", "stop_audio", true)}
-          aria-label="Procurar outro quadro"
-          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
+        <button type="button"
+          className={`big-button ${isSearching ? 'btn-stop' : 'btn-start'}`}
+          onClick={() => {
+            if (!isSearching) {
+              setIsSearching(true);
+            } else {
+              setIsSearching(false);
+              stopAll();
+            }
+          }}
+          onMouseEnter={() => announce(
+            isSearching ? "Procurar outro quadro" : "Procurar uma obra",
+            isSearching ? "stop_audio" : undefined,
+            true
+          )}
+          aria-label={isSearching ? "Procurar outro quadro" : "Começar a procurar uma obra"}
+          tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
-            <i className="fa-regular fa-circle-stop"></i>
+            <i className={`fa-regular ${isSearching ? 'fa-circle-stop' : 'fa-solid fa-magnifying-glass'}`}></i>
           </span>
-          <span>Procurar outro quadro</span>
+          <span>{isSearching ? 'Procurar outro quadro' : 'Procurar uma obra'}</span>
         </button>
 
-        <button 
+        <button type="button"
           className="big-button btn-description"
-          onClick={() => {
+          onClick={(e) => {
+            if (isDescriptionPlaying || isOverlayActive) { e.preventDefault(); return; }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a áudio-descrição: nenhuma obra foi identificada.");
+            } else if (failedTasks['tts-description']) {
+              handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a áudio-descrição. Verifique a sua ligação à internet.", "error");
             } else if (!descriptionText) {
               handleActionWithCheck(() => {}, false, "A áudio-descrição ainda está a ser gerada. Por favor, aguarde.");
             } else if (!settings.descriptionEnabled) {
@@ -303,9 +339,16 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description", true)}
-          disabled={isDescriptionPlaying || isSettingsOpen || isModalOpen}
-          aria-label={descriptionText ? "Tocar Áudio-descrição da obra" : "Áudio-descrição não disponível"}
-          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
+          aria-disabled={isDescriptionPlaying || isOverlayActive}
+          aria-label={
+            isDescriptionPlaying ? "A áudio-descrição está a ser reproduzida" :
+            !activePainting ? "Áudio-descrição não disponível pois nenhuma obra foi detetada" :
+            failedTasks['tts-description'] ? "Erro na áudio-descrição. Verifique a internet" :
+            !descriptionText ? "A áudio-descrição ainda está a ser gerada" :
+            !settings.descriptionEnabled ? "Áudio-descrição desativada nas definições" :
+            "Tocar Áudio-descrição da obra"
+          }
+          tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-comment-dots"></i>
@@ -313,11 +356,14 @@ export const LyriaPlayer: React.FC = () => {
           <span>Tocar Áudio-descrição</span>
         </button>
 
-        <button 
+        <button type="button"
           className="big-button btn-analysis"
-          onClick={() => {
+          onClick={(e) => {
+            if (isAnalysisPlaying || isOverlayActive) { e.preventDefault(); return; }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhuma obra foi identificada.");
+            } else if (failedTasks['tts-analysis'] || failedTasks['sfx']) {
+              handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a análise detalhada e os efeitos sonoros. Verifique a sua ligação à internet.", "error");
             } else if (!analysisText) {
               handleActionWithCheck(() => {}, false, "A análise detalhada ainda está a ser gerada. Por favor, aguarde.");
             } else if (!settings.analysisEnabled) {
@@ -327,9 +373,16 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis", true)}
-          disabled={isAnalysisPlaying || isSettingsOpen || isModalOpen}
-          aria-label={analysisText ? "Tocar Análise Detalhada da obra e som de objetos identificados" : "Análise não disponível"}
-          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
+          aria-disabled={isAnalysisPlaying || isOverlayActive}
+          aria-label={
+            isAnalysisPlaying ? "A análise detalhada está a ser reproduzida" :
+            !activePainting ? "Análise Detalhada não disponível pois nenhuma obra foi detetada" :
+            (failedTasks['tts-analysis'] || failedTasks['sfx']) ? "Erro na análise detalhada. Verifique a internet" :
+            !analysisText ? "A análise detalhada ainda está a ser gerada" :
+            !settings.analysisEnabled ? "Análise detalhada desativada nas definições" :
+            "Tocar Análise Detalhada da obra e som de objetos identificados"
+          }
+          tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-eye"></i>
@@ -337,13 +390,16 @@ export const LyriaPlayer: React.FC = () => {
           <span>Tocar Análise Detalhada</span>
         </button>
 
-        <button 
+        <button type="button"
           className="big-button btn-intention"
-          onClick={() => {
+          onClick={(e) => {
+            if (isIntentionPlaying || isOverlayActive) { e.preventDefault(); return; }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
             } else if (activePainting.id.toString().startsWith("unknown")) {
               handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível porque a obra é desconhecida e não consta na base de dados.");
+            } else if (failedTasks['tts-intention']) {
+              handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a intenção do autor. Verifique a sua ligação à internet.", "error");
             } else if (!authorsIntentionText) {
               handleActionWithCheck(() => {}, false, "A intenção do autor ainda está a ser gerada. Por favor, aguarde.");
             } else if (!settings.intentionEnabled) {
@@ -353,22 +409,36 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention", true)}
-          disabled={isIntentionPlaying || isSettingsOpen || isModalOpen}
-          aria-label={authorsIntentionText ? "Tocar Intenção do Autor da obra" : "Intenção do Autor não disponível"}
-          tabIndex={isSettingsOpen || isModalOpen ? -1 : 0}
+          aria-disabled={isIntentionPlaying || isOverlayActive}
+          aria-label={
+            isIntentionPlaying ? "A intenção do autor está a ser reproduzida" :
+            !activePainting ? "Intenção do Autor não disponível pois nenhuma obra foi detetada" :
+            activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para obras desconhecidas" :
+            failedTasks['tts-intention'] ? "Erro na intenção do autor. Verifique a internet" :
+            !authorsIntentionText ? "A intenção do autor ainda está a ser gerada" :
+            !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
+            "Tocar Intenção do Autor da obra"
+          }
+          tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-lightbulb"></i>
           </span>
           <span>Tocar Intenção do Autor</span>
         </button>
+        </nav>
       </main>
 
       {isSettingsOpen && (
         <SettingsMenu 
           settings={settings}
           onUpdate={updateSettings}
-          onClose={() => setIsSettingsOpen(false)}
+          onClose={() => {
+            setIsSettingsOpen(false);
+            setTimeout(() => {
+              document.querySelector<HTMLButtonElement>('.btn-settings')?.focus();
+            }, 0);
+          }}
           announce={announce}
         />
       )}
@@ -376,11 +446,20 @@ export const LyriaPlayer: React.FC = () => {
       <NotificationModal 
         isOpen={isModalOpen}
         message={modalMessage}
-        onClose={() => setIsModalOpen(false)}
+        onClose={modalVariant === 'error' ? () => { setIsModalOpen(false); handleRestartSystem(); } : () => setIsModalOpen(false)}
         announce={announce}
+        variant={modalVariant}
       />
 
-      <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isSettingsOpen || isModalOpen} inert={isSettingsOpen || isModalOpen ? true : undefined}>
+      <NotificationModal
+        isOpen={!!criticalError}
+        message={criticalError ?? ""}
+        onClose={handleRestartSystem}
+        announce={announce}
+        variant="error"
+      />
+
+      <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
         {isProcessing ? "A processar com inteligência artificial..." : ""}
         {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Obra atual: Obra desconhecida" : `Obra atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
       </footer>
@@ -388,7 +467,7 @@ export const LyriaPlayer: React.FC = () => {
       <CameraStream 
         onFrame={sendFrame} 
         isPaused={isPaused || isProcessing || !!activePainting} 
-        isActive={!isSettingsOpen && !isModalOpen} 
+        isActive={isSearching && !isOverlayActive} 
       />
     </div>
   );

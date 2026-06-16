@@ -131,12 +131,19 @@ body, html, #root {
   }
 }
 
-.big-button:hover, .big-button:focus {
-  outline: none;
+.big-button:hover {
   border-color: var(--accent);
   background-color: #333;
   transform: scale(1.01);
   box-shadow: 0 0 20px rgba(33, 150, 243, 0.3);
+}
+
+.big-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(33, 150, 243, 0.25);
+  border-color: var(--accent);
+  background-color: #333;
 }
 
 .big-button:active {
@@ -159,6 +166,7 @@ body, html, #root {
 .btn-pause { border-bottom: 1vh solid #ff9800; }
 .btn-pause.paused { border-bottom-color: var(--success); }
 .btn-stop { border-bottom: 1vh solid var(--danger); }
+.btn-start { border-bottom: 1vh solid #9c27b0; }
 .btn-intention { border-bottom: 1vh solid #e91e63; }
 
 .notification-overlay {
@@ -204,6 +212,17 @@ body, html, #root {
   padding: 2vh 4vh !important;
 }
 
+.notification-content.error-variant {
+  border-color: var(--danger);
+}
+
+.btn-restart {
+  border-bottom: 1vh solid var(--danger) !important;
+  max-width: 300px;
+  height: auto !important;
+  padding: 2vh 4vh !important;
+}
+
 .camera-viewfinder {
   position: fixed;
   top: 0;
@@ -231,6 +250,13 @@ body, html, #root {
 @keyframes scan {
   0% { top: 0; }
   100% { top: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-line {
+    animation: none;
+    display: none;
+  }
 }
 
 
@@ -280,10 +306,27 @@ body, html, #root {
   font-size: 3.5rem;
   cursor: pointer;
   transition: transform 0.2s ease;
+  position: relative;
+}
+
+/* Expand the hitbox to the top-right edge of the screen */
+.close-button::after {
+  content: '';
+  position: absolute;
+  top: -4vh;
+  right: -4vh;
+  bottom: -2vh;
+  left: -2vh;
 }
 
 .close-button:hover {
   transform: scale(1.1);
+}
+
+.close-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 50%;
 }
 
 .settings-grid {
@@ -307,57 +350,6 @@ body, html, #root {
 .setting-item label {
   font-size: 1.8rem;
   font-weight: bold;
-}
-
-.volume-stepper {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  width: 100%;
-}
-
-.step-button {
-  background: #333;
-  border: 4px solid #444;
-  color: white;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.step-button:hover {
-  background: var(--accent);
-  border-color: var(--accent-dark);
-  transform: scale(1.1);
-}
-
-.volume-bar-container {
-  flex: 1;
-  display: flex;
-  gap: 6px;
-  height: 30px;
-  align-items: stretch;
-}
-
-.volume-step {
-  flex: 1;
-  background: #222;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  border: 1px solid #333;
-}
-
-.volume-step.filled {
-  background: var(--accent);
-  box-shadow: 0 0 10px rgba(33, 150, 243, 0.4);
-  border-color: var(--accent-dark);
 }
 
 .setting-button {
@@ -389,6 +381,12 @@ body, html, #root {
   transform: scale(1.02);
 }
 
+.setting-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 20px;
+}
+
 @media (max-width: 768px) {
   .settings-grid {
     grid-template-columns: 1fr;
@@ -396,7 +394,7 @@ body, html, #root {
   }
   .setting-item { grid-column: span 1; }
   .settings-header h2 { font-size: 1.8rem; }
-  .close-button { font-size: 2.5rem; }
+  .close-button { font-size: 4rem; }
   .setting-button { font-size: 1.2rem; border-width: 4px; }
 }
 

@@ -1,6 +1,25 @@
 import { GoogleGenAI } from "@google/genai";
 import { decode } from "base64-arraybuffer";
 import type { LyriaMessage, ServiceStatus } from "../types/lyria";
+import { withRetry } from "../utils/retry.ts";
+
+function isLyriaConnectRetriable(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return (
+      msg.includes('429') ||
+      msg.includes('503') ||
+      msg.includes('502') ||
+      msg.includes('rate') ||
+      msg.includes('network') ||
+      msg.includes('timeout') ||
+      msg.includes('websocket') ||
+      msg.includes('connect') ||
+      msg.includes('fetch')
+    );
+  }
+  return false;
+}
 
 export class LyriaService {
   private lyria: GoogleGenAI;
@@ -43,27 +62,36 @@ export class LyriaService {
       await this.initAudio();
       this.setVolume(1.0);
 
+      await withRetry(
+        async () => {
+          if (this.session) {
+            this.session.close();
+            this.session = null;
+          }
 
-      this.session = await this.lyria.live.music.connect({
-        model: "lyria-realtime-exp",
-        callbacks: {
-          onmessage: (msg) => this.handleMessage(msg as LyriaMessage),
-          onerror: (err) => {
-            console.error(err);
-            this.setStatus('error');
-          },
-          onclose: () => this.stop(),
+          this.session = await this.lyria.live.music.connect({
+            model: "lyria-realtime-exp",
+            callbacks: {
+              onmessage: (msg) => this.handleMessage(msg as LyriaMessage),
+              onerror: (err) => {
+                console.error(err);
+                this.setStatus('error');
+              },
+              onclose: () => this.stop(),
+            },
+          });
+          await this.session.setWeightedPrompts({
+            weightedPrompts: [{ text: prompt, weight: 1.0 }],
+          });
+
+          await this.session.play();
         },
-      });
+        { maxAttempts: 3, baseDelayMs: 2000, shouldRetry: isLyriaConnectRetriable }
+      );
 
       this.setStatus('playing');
       console.log("Lyria Stream is now open and ready.");
 
-      await this.session.setWeightedPrompts({
-        weightedPrompts: [{ text: prompt, weight: 1.0 }],
-      });
-
-      await this.session.play();
     } catch (error) {
       this.setStatus('error');
       throw error;

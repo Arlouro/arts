@@ -1,4 +1,5 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { withRetry, isRetryableError } from "../utils/retry.ts";
 
 export class ElevenLabsService {
   private client: ElevenLabsClient;
@@ -24,22 +25,29 @@ export class ElevenLabsService {
     this.initAudio();
 
     try {
-      const audioStream = await this.client.textToSoundEffects.convert({
-        text: prompt,
-        durationSeconds: 5,
-        promptInfluence: 0.3,
-      });
+      return await withRetry(
+        async () => {
+          const audioStream = await this.client.textToSoundEffects.convert({
+            text: prompt,
+            durationSeconds: 5,
+            promptInfluence: 0.3,
+          });
 
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of audioStream as any) {
-        chunks.push(chunk);
-      }
+          const chunks: Uint8Array[] = [];
+          for await (const chunk of audioStream as any) {
+            chunks.push(chunk);
+          }
 
-      const audioBlob = new Blob(chunks as BlobPart[], { type: "audio/mpeg" });
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      return await this.audioContext!.decodeAudioData(arrayBuffer);
+          if (chunks.length === 0) throw new Error('ElevenLabs returned empty audio stream');
+
+          const audioBlob = new Blob(chunks as BlobPart[], { type: "audio/mpeg" });
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          return await this.audioContext!.decodeAudioData(arrayBuffer);
+        },
+        { maxAttempts: 3, baseDelayMs: 1500, shouldRetry: isRetryableError }
+      );
     } catch (error) {
-      console.error("ElevenLabs generation error:", error);
+      console.error("ElevenLabs generation error after retries:", error);
       return null;
     }
   }

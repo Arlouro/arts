@@ -7,7 +7,7 @@ import type { Painting } from '../types/painting.ts';
 import { useYolo } from './useYolo.ts';
 import { useSettings } from './useSettings.ts';
 
-export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
+export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string, isSearching: boolean = false) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePainting, setActivePainting] = useState<Painting | null>(null);
   const [currentPrompt, setCurrentPrompt] = useState<string>("");
@@ -20,6 +20,8 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
   const [isAnalysisPlaying, setIsAnalysisPlaying] = useState(false);
   const [isIntentionPlaying, setIsIntentionPlaying] = useState(false);
   const [isUiAnnouncing, setIsUiAnnouncing] = useState(false);
+  const [criticalError, setCriticalError] = useState<string | null>(null);
+  const [failedTasks, setFailedTasks] = useState<Record<string, boolean>>({});
   const { settings, updateSettings } = useSettings();
 
   const gemini = useMemo(() => new GeminiService(apiKey), [apiKey]);
@@ -47,7 +49,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
   const activeTtsCountRef = useRef<number>(0);
 
   const playScanningPing = useCallback(() => {
-    if (!settings.sfxEnabled || isPaused || isProcessing || activePainting) return;
+    if (!settings.sfxEnabled || isPaused || isProcessing || activePainting || !isSearching) return;
     
     try {
       if (!audioContextRef.current) {
@@ -83,10 +85,10 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     } catch (e) {
       console.warn("Could not play scanning ping:", e);
     }
-  }, [settings.masterVolume, settings.sfxEnabled, isPaused, isProcessing, activePainting]);
+  }, [settings.masterVolume, settings.sfxEnabled, isPaused, isProcessing, activePainting, isSearching]);
 
   useEffect(() => {
-    const shouldPulse = detectionStatus === 'idle' && !activePainting && !isPaused && !isProcessing;
+    const shouldPulse = detectionStatus === 'idle' && !activePainting && !isPaused && !isProcessing && isSearching;
     
     if (shouldPulse) {
       playScanningPing();
@@ -101,7 +103,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     return () => {
       if (scanningIntervalRef.current) clearInterval(scanningIntervalRef.current);
     };
-  }, [detectionStatus, activePainting, isPaused, isProcessing, playScanningPing]);
+  }, [detectionStatus, activePainting, isPaused, isProcessing, playScanningPing, isSearching]);
 
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -313,7 +315,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
 
       console.log("Triggering parallel audio generation...");
       
-      const generationTasks: Promise<any>[] = [];
+      const generationTasks: Array<{ label: string; promise: Promise<any> }> = [];
 
       // 1. Music (Lyria)
       let introBufferPromise: Promise<AudioBuffer | null> | null = null;
@@ -326,33 +328,38 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       }
 
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push(lyria.connect(musicPrompt));
+        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt) });
       }
 
       // 2. TTS Description
       if (settings.descriptionEnabled) {
-        generationTasks.push(
-          tts.generateSpeechBuffer(desc).then(buf => descriptionBufferRef.current = buf)
-        );
+        generationTasks.push({
+          label: 'tts-description',
+          promise: tts.generateSpeechBuffer(desc).then(buf => descriptionBufferRef.current = buf)
+        });
       }
 
       // 3. TTS Analysis
       if (settings.analysisEnabled) {
-        generationTasks.push(
-          tts.generateSpeechBuffer(anal).then(buf => analysisBufferRef.current = buf)
-        );
+        generationTasks.push({
+          label: 'tts-analysis',
+          promise: tts.generateSpeechBuffer(anal).then(buf => analysisBufferRef.current = buf)
+        });
       }
 
-      // 4. SFX
+      // 4. TTS Intention
       if (settings.intentionEnabled && intention) {
-        generationTasks.push(
-          tts.generateSpeechBuffer(intention).then(buf => authorsIntentionBufferRef.current = buf)
-        );
+        generationTasks.push({
+          label: 'tts-intention',
+          promise: tts.generateSpeechBuffer(intention).then(buf => authorsIntentionBufferRef.current = buf)
+        });
       }
 
+      // 5. SFX
       if (settings.sfxEnabled) {
-        generationTasks.push(
-          Promise.all(
+        generationTasks.push({
+          label: 'sfx',
+          promise: Promise.all(
             objects.map(async (obj: { SoundEffectPrompt: string, Pan?: string | number }) => {
               const buffer = await sfx.generateSfxBuffer(obj.SoundEffectPrompt);
               const pan = obj.Pan !== undefined ? parseFloat(obj.Pan.toString()) : 0;
@@ -361,7 +368,7 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
           ).then(results => {
             sfxBuffersRef.current = results.filter(r => r !== null) as { buffer: AudioBuffer; pan: number }[];
           })
-        );
+        });
       }
 
       if (introBufferPromise) {
@@ -387,12 +394,37 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
         }
       }
 
-      await Promise.all(generationTasks);
-      console.log("Parallel generation complete. All buffers ready.");
+      const results = await Promise.allSettled(generationTasks.map(t => t.promise));
 
+      let succeededCount = 0;
+      results.forEach((result, i) => {
+        const { label } = generationTasks[i];
+        if (result.status === 'rejected') {
+          console.warn(`[Orchestrator] Task "${label}" failed:`, result.reason);
+          setFailedTasks(prev => ({ ...prev, [label]: true }));
+
+          if (label === 'lyria') {
+            setCriticalError(
+              "Não foi possível conectar ao serviço de música. " +
+              "Verifique a sua ligação à internet e reinicie o sistema."
+            );
+          }
+        } else {
+          succeededCount++;
+        }
+      });
+
+      console.log(
+        `[Orchestrator] Generation complete. ${succeededCount}/${results.length} tasks succeeded.`
+      );
+      
     } catch (error) {
       console.error("Orchestration failed:", error);
       lastPaintingId.current = null;
+      setCriticalError(
+        "Não foi possível processar a obra de arte. " +
+        "Verifique a sua ligação à internet e reinicie o sistema."
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -441,6 +473,9 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
     processNewDetection,
     setGlobalDucking,
     sendFrame,
+    criticalError,
+    failedTasks,
+    clearCriticalError: () => setCriticalError(null),
     stopAll: async () => {
       emitRef.current?.("resume_detection", {});
       await lyria.stop();
@@ -455,6 +490,8 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string) => {
       setAnalysisText("");
       setAuthorsIntentionText("");
       setDetectionStatus("idle");
+      setCriticalError(null);
+      setFailedTasks({});
       
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
