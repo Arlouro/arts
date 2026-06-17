@@ -255,7 +255,7 @@ export const LyriaPlayer: React.FC = () => {
   };
 
   const handleRestartSystem = async () => {
-    await stopAll();
+    await stopAll(false);
     setIsSearching(false);
   };
 
@@ -267,24 +267,20 @@ export const LyriaPlayer: React.FC = () => {
           <span className="sr-only">Estado do sistema:</span>
           {currentStatus}
         </div>
-      </header>
-
-      <main className="main-content" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
-        <h2 className="sr-only">Controlos Principais</h2>
-        <nav aria-label="Ações principais" style={{ display: 'contents' }}>
-          <button type="button"
-          className="big-button btn-settings"
+        <button type="button"
+          className="header-btn-settings"
           onClick={() => setIsSettingsOpen(true)}
           onMouseEnter={() => announce("Definições", "settings", true)}
           aria-label="Abrir definições do sistema"
           tabIndex={isOverlayActive ? -1 : 0}
         >
-          <span className="icon" aria-hidden="true">
-            <i className="fa-regular fa-keyboard"></i>
-          </span>
-          <span>Definições</span>
+          <i className="fa-solid fa-gear" aria-hidden="true"></i>
         </button>
+      </header>
 
+      <main className="main-content" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
+        <h2 className="sr-only">Controlos Principais</h2>
+        <nav aria-label="Ações principais" style={{ display: 'contents' }}>
         <button type="button"
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
           onClick={() => handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
@@ -299,27 +295,28 @@ export const LyriaPlayer: React.FC = () => {
         </button>
 
         <button type="button"
-          className={`big-button ${isSearching ? 'btn-stop' : 'btn-start'}`}
+          className={`big-button ${!isSearching ? 'btn-start' : 'btn-stop'}`}
           onClick={() => {
             if (!isSearching) {
+              stopAll(true);
               setIsSearching(true);
             } else {
+              stopAll(false);
               setIsSearching(false);
-              stopAll();
             }
           }}
           onMouseEnter={() => announce(
-            isSearching ? "Procurar outro quadro" : "Procurar uma obra",
+            !isSearching ? "Procurar quadro" : "Parar pesquisa",
             isSearching ? "stop_audio" : undefined,
             true
           )}
-          aria-label={isSearching ? "Procurar outro quadro" : "Começar a procurar uma obra"}
+          aria-label={!isSearching ? "Procurar quadro" : "Parar pesquisa"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
-            <i className={`fa-regular ${isSearching ? 'fa-circle-stop' : 'fa-solid fa-magnifying-glass'}`}></i>
+            <i className={!isSearching ? 'fa-solid fa-magnifying-glass' : 'fa-regular fa-circle-stop'}></i>
           </span>
-          <span>{isSearching ? 'Procurar outro quadro' : 'Procurar uma obra'}</span>
+          <span>{!isSearching ? 'Procurar quadro' : 'Parar pesquisa'}</span>
         </button>
 
         <button type="button"
@@ -436,7 +433,7 @@ export const LyriaPlayer: React.FC = () => {
           onClose={() => {
             setIsSettingsOpen(false);
             setTimeout(() => {
-              document.querySelector<HTMLButtonElement>('.btn-settings')?.focus();
+              document.querySelector<HTMLButtonElement>('.header-btn-settings')?.focus();
             }, 0);
           }}
           announce={announce}

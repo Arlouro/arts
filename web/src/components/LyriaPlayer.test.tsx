@@ -27,6 +27,9 @@ vi.mock('../hooks/useOrchestrator', () => ({
     togglePause: vi.fn(),
     processNewDetection: vi.fn(),
     stopAll: vi.fn(),
+    criticalError: null,
+    failedTasks: {},
+    clearCriticalError: vi.fn(),
   })),
 }));
 
@@ -40,7 +43,7 @@ describe('LyriaPlayer Accessibility', () => {
   it('should have no violations when a painting is detected', async () => {
     vi.mocked(useOrchestrator).mockReturnValue({
       isProcessing: false,
-      activePainting: { title: 'Mona Lisa', artist: 'Leonardo da Vinci' } as any,
+      activePainting: { id: '1', title: 'Mona Lisa', artist: 'Leonardo da Vinci' } as any,
       currentPrompt: 'A beautiful song',
       detectionStatus: 'centered',
       descriptionText: 'Uma pintura famosa...',
@@ -62,6 +65,9 @@ describe('LyriaPlayer Accessibility', () => {
       setGlobalDucking: vi.fn(),
       stopAll: vi.fn(),
       sendFrame: vi.fn(),
+      criticalError: null,
+      failedTasks: {},
+      clearCriticalError: vi.fn(),
     });
 
     const { container } = render(<LyriaPlayer />);
@@ -107,6 +113,9 @@ describe('Screen Reader & Blind User Support', () => {
       setGlobalDucking: vi.fn(),
       stopAll: vi.fn(),
       sendFrame: vi.fn(),
+      criticalError: null,
+      failedTasks: {},
+      clearCriticalError: vi.fn(),
     });
   });
 
@@ -127,6 +136,6 @@ describe('Screen Reader & Blind User Support', () => {
     const { getByLabelText } = render(<LyriaPlayer />);
     expect(getByLabelText(/Abrir definições do sistema/i)).toBeInTheDocument();
     expect(getByLabelText(/Pausar sistema e parar áudio/i)).toBeInTheDocument();
-    expect(getByLabelText(/Procurar outro quadro/i)).toBeInTheDocument();
+    expect(getByLabelText(/Procurar quadro/i)).toBeInTheDocument();
   });
 });

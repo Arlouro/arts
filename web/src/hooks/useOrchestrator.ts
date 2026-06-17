@@ -476,8 +476,8 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string, isSear
     criticalError,
     failedTasks,
     clearCriticalError: () => setCriticalError(null),
-    stopAll: async () => {
-      emitRef.current?.("resume_detection", {});
+    stopAll: async (resumeDetection: boolean = true) => {
+      emitRef.current?.(resumeDetection ? "resume_detection" : "pause_detection", {});
       await lyria.stop();
       tts.stopAll();
       stopSfxLoop();
