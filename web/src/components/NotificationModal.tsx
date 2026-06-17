@@ -64,6 +64,10 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
     }
   }, [isOpen, message, announce, isError]);
 
+  const idPrefix = React.useId();
+  const titleId = `notification-title-${idPrefix}`;
+  const descId = `notification-desc-${idPrefix}`;
+
   if (!isOpen) return null;
 
   const buttonLabel = isError ? 'Reiniciar Sistema' : 'Fechar';
@@ -71,10 +75,6 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   const buttonIcon = isError ? 'fa-arrows-rotate' : 'fa-circle-xmark';
   const buttonClass = isError ? 'btn-restart' : 'btn-ok';
   const dialogTitle = isError ? 'Erro do Sistema' : title;
-
-  const idPrefix = React.useId();
-  const titleId = `notification-title-${idPrefix}`;
-  const descId = `notification-desc-${idPrefix}`;
 
   const content = (
     <>
