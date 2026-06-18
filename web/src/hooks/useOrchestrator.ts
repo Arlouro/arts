@@ -47,22 +47,26 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const sfxBuffersRef = useRef<{ buffer: AudioBuffer; pan: number }[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const activeTtsCountRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const initAudioContext = useCallback(() => {
+    if (!audioContextRef.current) {
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+      if (!AudioContextClass) return;
+      audioContextRef.current = new AudioContextClass();
+    }
+    
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume().catch(() => {});
+    }
+  }, []);
 
   const playScanningPing = useCallback(() => {
     if (!settings.sfxEnabled || isPaused || isProcessing || activePainting || !isSearching) return;
     
     try {
-      if (!audioContextRef.current) {
-        const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
-        if (!AudioContextClass) return;
-        audioContextRef.current = new AudioContextClass();
-      }
-      
+      if (!audioContextRef.current) return;
       const ctx = audioContextRef.current;
-      
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
       
       if (ctx.state === 'suspended') return;
 
@@ -265,6 +269,13 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    const signal = abortController.signal;
+
     try {
       // Immediate state change to block concurrent handle calls
       setIsProcessing(true);
@@ -290,7 +301,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
       lyria.stop();
 
-      const analysis = await gemini.analyzePainting(painting);
+      const analysis = await gemini.analyzePainting(painting, signal);
+      if (signal.aborted) return;
 
       // Send for server-side debug logging
       emitRef.current?.("save_analysis", { 
@@ -324,7 +336,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         const introText = isUnknown 
           ? "Obra desconhecida." 
           : `${painting.title}. ${painting.artist && painting.artist !== "Desconhecido" ? `Por ${painting.artist}.` : ""} ${painting.year && painting.year !== "Desconhecido" ? `Ano, ${painting.year}.` : ""}`;
-        introBufferPromise = tts.generateSpeechBuffer(introText);
+        introBufferPromise = tts.generateSpeechBuffer(introText, signal);
       }
 
       if (!isPaused && settings.musicEnabled) {
@@ -335,7 +347,9 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       if (settings.descriptionEnabled) {
         generationTasks.push({
           label: 'tts-description',
-          promise: tts.generateSpeechBuffer(desc).then(buf => descriptionBufferRef.current = buf)
+          promise: tts.generateSpeechBuffer(desc, signal).then(buf => {
+            if (!signal.aborted) descriptionBufferRef.current = buf;
+          })
         });
       }
 
@@ -343,7 +357,9 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       if (settings.analysisEnabled) {
         generationTasks.push({
           label: 'tts-analysis',
-          promise: tts.generateSpeechBuffer(anal).then(buf => analysisBufferRef.current = buf)
+          promise: tts.generateSpeechBuffer(anal, signal).then(buf => {
+            if (!signal.aborted) analysisBufferRef.current = buf;
+          })
         });
       }
 
@@ -351,7 +367,9 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       if (settings.intentionEnabled && intention) {
         generationTasks.push({
           label: 'tts-intention',
-          promise: tts.generateSpeechBuffer(intention).then(buf => authorsIntentionBufferRef.current = buf)
+          promise: tts.generateSpeechBuffer(intention, signal).then(buf => {
+            if (!signal.aborted) authorsIntentionBufferRef.current = buf;
+          })
         });
       }
 
@@ -361,12 +379,15 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           label: 'sfx',
           promise: Promise.all(
             objects.map(async (obj: { SoundEffectPrompt: string, Pan?: string | number }) => {
-              const buffer = await sfx.generateSfxBuffer(obj.SoundEffectPrompt);
+              const buffer = await sfx.generateSfxBuffer(obj.SoundEffectPrompt, signal);
+              if (signal.aborted) return null;
               const pan = obj.Pan !== undefined ? parseFloat(obj.Pan.toString()) : 0;
               return buffer ? { buffer, pan: isNaN(pan) ? 0 : pan } : null;
             })
           ).then(results => {
-            sfxBuffersRef.current = results.filter(r => r !== null) as { buffer: AudioBuffer; pan: number }[];
+            if (!signal.aborted) {
+              sfxBuffersRef.current = results.filter(r => r !== null) as { buffer: AudioBuffer; pan: number }[];
+            }
           })
         });
       }
@@ -400,6 +421,10 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       results.forEach((result, i) => {
         const { label } = generationTasks[i];
         if (result.status === 'rejected') {
+          if (result.reason?.name === 'AbortError') {
+            console.log(`[Orchestrator] Task "${label}" was aborted.`);
+            return;
+          }
           console.warn(`[Orchestrator] Task "${label}" failed:`, result.reason);
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
@@ -475,8 +500,13 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     sendFrame,
     criticalError,
     failedTasks,
+    initAudioContext,
     clearCriticalError: () => setCriticalError(null),
     stopAll: async (resumeDetection: boolean = true) => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       emitRef.current?.(resumeDetection ? "resume_detection" : "pause_detection", {});
       await lyria.stop();
       tts.stopAll();

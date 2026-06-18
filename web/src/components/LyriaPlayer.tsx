@@ -33,7 +33,8 @@ export const LyriaPlayer: React.FC = () => {
     sendFrame,
     criticalError,
     failedTasks,
-    stopAll 
+    stopAll,
+    initAudioContext
   } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, isSearching);
 
   const [paintings, setPaintings] = useState<any[]>([]);
@@ -57,6 +58,7 @@ export const LyriaPlayer: React.FC = () => {
     const handleInteraction = () => {
       if (!hasInteracted) {
         setHasInteracted(true);
+        initAudioContext();
         const utterance = new SpeechSynthesisUtterance('');
         utterance.volume = 0;
         window.speechSynthesis.speak(utterance);
@@ -84,9 +86,9 @@ export const LyriaPlayer: React.FC = () => {
   }, []);
 
   const statusMessages: Record<string, string> = {
-    idle: "À procura de obra...",
-    focusing: "Obra detetada. Por favor, aguarde o foco.",
-    centered: "Obra centrada. A capturar imagem.",
+    idle: "À procura de obra...Aponte a câmara diretamente para uma obra de arte.",
+    focusing: "Obra detetada! Mantenha o dispositivo imóvel para capturar",
+    centered: "Perfeito. A enviar imagem para análise...",
     need_center_left: "Aponte a câmara mais para a esquerda, para centrar o quadro.",
     need_center_right: "Aponte a câmara mais para a direita, para centrar o quadro.",
     need_center_up: "Aponte a câmara mais para cima, para centrar o quadro.",
@@ -168,7 +170,7 @@ export const LyriaPlayer: React.FC = () => {
     if (isPaused || !hasInteracted || !isSearching) return;
 
     if (isProcessing && activePainting) {
-      announce(`Quadro identificado: ${activePainting.title}. A gerar soundscape emocional.`, `painting_${activePainting.id}`);
+      announce(`Quadro identificado: ${activePainting.title}. A gerar paisagem sonora. Este processo demora alguns segundos, por favor aguarde até a música começar a tocar.`, `painting_${activePainting.id}`);
     } else if (!isProcessing && activePainting) {
       
     } else if (detectionStatus === 'idle') {
@@ -189,9 +191,9 @@ export const LyriaPlayer: React.FC = () => {
   }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted, isSearching]);
 
   const currentStatus = !isSearching
-    ? "Pronto para iniciar"
+    ? "Câmara em pausa. Prima o botão de 'Procurar quadro' para recomeçar a procura."
     : activePainting 
-      ? `Obra detetada: ${activePainting.title}. ${isProcessing ? "A analisar..." : ""}` 
+      ? `Obra detetada: ${activePainting.title}. ${isProcessing ? "A compor a paisagem sonora... (aguarde alguns segundos)" : ""}` 
       : statusMessages[detectionStatus] || statusMessages.idle;
 
   useEffect(() => {
@@ -457,7 +459,7 @@ export const LyriaPlayer: React.FC = () => {
       />
 
       <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
-        {isProcessing ? "A processar com inteligência artificial..." : ""}
+        {isProcessing ? "A processar detalhes da obra e a gerar áudio. Este processo demora alguns segundos, por favor aguarde." : ""}
         {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Obra atual: Obra desconhecida" : `Obra atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
       </footer>
 

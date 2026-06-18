@@ -44,13 +44,12 @@ export async function withRetry<T>(
 }
 
 // Determines which errors are worth retrying.
-// Exported so callers can extend or compose it with service-specific logic.
 export function isRetryableError(error: unknown): boolean {
-    // SyntaxError means the model returned malformed/unparseable JSON.
-    // Re-generating the response often produces a valid one.
     if (error instanceof SyntaxError) return true;
 
     if (error instanceof Error) {
+        if (error.name === 'AbortError') return false;
+        
         const message = error.message.toLowerCase();
         // Retry on rate limiting, server errors, and network issues.
         return (
@@ -64,4 +63,4 @@ export function isRetryableError(error: unknown): boolean {
         );
     }
     return false;
-}
+}

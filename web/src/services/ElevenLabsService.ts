@@ -19,7 +19,7 @@ export class ElevenLabsService {
     }
   }
 
-  async generateSfxBuffer(prompt: string): Promise<AudioBuffer | null> {
+  async generateSfxBuffer(prompt: string, signal?: AbortSignal): Promise<AudioBuffer | null> {
     this.initAudio();
 
     try {
@@ -28,7 +28,8 @@ export class ElevenLabsService {
           const response = await fetch(`${API_BASE_URL}/sfx`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
+            body: JSON.stringify({ prompt }),
+            signal
           });
 
           if (!response.ok) {
@@ -123,9 +124,9 @@ export class ElevenLabsService {
     this.activeNodes.clear();
   }
 
-  async generateAndPlaySfx(prompt: string, pan: number = 0): Promise<void> {
-    const buffer = await this.generateSfxBuffer(prompt);
-    if (buffer) {
+  async generateAndPlaySfx(prompt: string, pan: number = 0, signal?: AbortSignal): Promise<void> {
+    const buffer = await this.generateSfxBuffer(prompt, signal);
+    if (buffer && (!signal || !signal.aborted)) {
       await this.playAudioBuffer(buffer, 0.6, pan);
     }
   }

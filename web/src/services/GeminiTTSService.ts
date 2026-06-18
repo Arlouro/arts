@@ -19,7 +19,7 @@ export class GeminiTTSService {
     }
   }
 
-  async generateSpeechBuffer(text: string): Promise<AudioBuffer | null> {
+  async generateSpeechBuffer(text: string, signal?: AbortSignal): Promise<AudioBuffer | null> {
     this.initAudio();
 
     try {
@@ -28,7 +28,8 @@ export class GeminiTTSService {
           const response = await fetch(`${API_BASE_URL}/tts/gemini`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text }),
+            signal
           });
 
           if (!response.ok) {
@@ -108,9 +109,9 @@ export class GeminiTTSService {
     this.activeNodes.clear();
   }
 
-  async textToSpeech(text: string): Promise<void> {
-    const buffer = await this.generateSpeechBuffer(text);
-    if (buffer) {
+  async textToSpeech(text: string, signal?: AbortSignal): Promise<void> {
+    const buffer = await this.generateSpeechBuffer(text, signal);
+    if (buffer && (!signal || !signal.aborted)) {
       await this.playAudioBuffer(buffer);
     }
   }

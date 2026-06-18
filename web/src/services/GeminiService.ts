@@ -26,7 +26,7 @@ export class GeminiService {
     });
   }
 
-  async analyzePainting(paintingData: Painting): Promise<any> {
+  async analyzePainting(paintingData: Painting, signal?: AbortSignal): Promise<any> {
     const imageData = await this.getBase64Image(
       paintingData.imagePath, 
       paintingData.imageData
@@ -48,12 +48,13 @@ export class GeminiService {
               context: paintingData.context,
               authors_intention: paintingData.authors_intention,
               isUnknown
-            })
+            }),
+            signal
           });
 
           if (!response.ok) {
-             const errorData = await response.json().catch(() => ({}));
-             throw new Error(errorData.error || `Server responded with ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Server responded with ${response.status}`);
           }
 
           return await response.json();
