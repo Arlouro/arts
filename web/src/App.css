@@ -521,3 +521,26 @@ button, a {
   font-size: clamp(1rem, 5vw, 1.5rem) !important;
   line-height: 1.2 !important;
 }
+
+@media (max-width: 768px) {
+  .onboarding-content {
+    padding: 2.5vh;
+    gap: 2vh;
+  }
+  .onboarding-content h1 {
+    font-size: 1.5rem;
+  }
+  .onboarding-subtitle {
+    font-size: 0.95rem;
+  }
+  .onboarding-steps p.step-item {
+    font-size: 0.85rem;
+    padding: 1.5vh;
+  }
+  .onboarding-start-btn {
+    padding: 1.5vh 2vh !important;
+  }
+  .onboarding-start-btn span {
+    font-size: 1rem !important;
+  }
+}
