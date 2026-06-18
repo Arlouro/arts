@@ -1,14 +1,14 @@
-import { GoogleGenAI } from "@google/genai";
 import { decode } from "base64-arraybuffer";
 import { withRetry, isRetryableError } from "../utils/retry.ts";
 
+const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000"}/api`;
+
 export class GeminiTTSService {
-  private gemini: GoogleGenAI;
   private audioContext: AudioContext | null = null;
   private activeNodes: Set<{ source: AudioBufferSourceNode, gainNode: GainNode }> = new Set();
 
-  constructor(apiKey: string) {
-    this.gemini = new GoogleGenAI({ apiKey });
+  constructor() {
+    // API Key is managed securely by the backend proxy.
   }
  
   private initAudio() {
@@ -26,26 +26,20 @@ export class GeminiTTSService {
     try {
       return await withRetry(
         async () => {
-          const result = await this.gemini.models.generateContent({ 
-            model: "gemini-3.1-flash-tts-preview",
-            contents: [{ role: 'user', parts: [{ text }] }],
-            config: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { 
-                    voiceName: "Charon"
-                  }
-                },
-                languageCode: "pt-PT",
-              }
-            }
+          const response = await fetch(`${API_BASE_URL}/tts/gemini`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text })
           });
 
-          const audioPart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-          const base64Audio = audioPart?.inlineData?.data;
+          if (!response.ok) {
+             const errorData = await response.json().catch(() => ({}));
+             throw new Error(errorData.error || `TTS proxy responded with ${response.status}`);
+          }
 
-          if (!base64Audio) throw new Error('TTS returned empty audio data');
+          const { audioData: base64Audio } = await response.json();
+
+          if (!base64Audio) throw new Error('TTS proxy returned empty audio data');
 
           const arrayBuffer = decode(base64Audio);
           return await this.pcmToAudioBuffer(arrayBuffer, 24000);

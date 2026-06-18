@@ -1,15 +1,13 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { decode } from "base64-arraybuffer";
 import { withRetry, isRetryableError } from "../utils/retry.ts";
 
+const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000"}/api`;
+
 export class ElevenLabsService {
-  private client: ElevenLabsClient;
   private audioContext: AudioContext | null = null;
   private activeNodes: Set<{ source: AudioBufferSourceNode, gainNode: GainNode }> = new Set();
 
-  constructor(apiKey: string) {
-    this.client = new ElevenLabsClient({
-      apiKey: apiKey,
-    });
+  constructor() {
   }
 
   private initAudio() {
@@ -27,21 +25,21 @@ export class ElevenLabsService {
     try {
       return await withRetry(
         async () => {
-          const audioStream = await this.client.textToSoundEffects.convert({
-            text: prompt,
-            durationSeconds: 5,
-            promptInfluence: 0.3,
+          const response = await fetch(`${API_BASE_URL}/sfx`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
           });
 
-          const chunks: Uint8Array[] = [];
-          for await (const chunk of audioStream as any) {
-            chunks.push(chunk);
+          if (!response.ok) {
+             const errorData = await response.json().catch(() => ({}));
+             throw new Error(errorData.error || `SFX proxy responded with ${response.status}`);
           }
 
-          if (chunks.length === 0) throw new Error('ElevenLabs returned empty audio stream');
+          const { audioData: base64Audio } = await response.json();
+          if (!base64Audio) throw new Error('SFX proxy returned empty audio data');
 
-          const audioBlob = new Blob(chunks as BlobPart[], { type: "audio/mpeg" });
-          const arrayBuffer = await audioBlob.arrayBuffer();
+          const arrayBuffer = decode(base64Audio);
           return await this.audioContext!.decodeAudioData(arrayBuffer);
         },
         { maxAttempts: 3, baseDelayMs: 1500, shouldRetry: isRetryableError }

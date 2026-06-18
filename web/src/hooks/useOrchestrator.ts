@@ -24,10 +24,10 @@ export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string, isSear
   const [failedTasks, setFailedTasks] = useState<Record<string, boolean>>({});
   const { settings, updateSettings } = useSettings();
 
-  const gemini = useMemo(() => new GeminiService(apiKey), [apiKey]);
+  const gemini = useMemo(() => new GeminiService(), []);
   const lyria = useMemo(() => new LyriaService(apiKey), [apiKey]);
-  const tts = useMemo(() => new GeminiTTSService(apiKey), [apiKey]);
-  const sfx = useMemo(() => new ElevenLabsService(elevenLabsApiKey), [elevenLabsApiKey]);
+  const tts = useMemo(() => new GeminiTTSService(), []);
+  const sfx = useMemo(() => new ElevenLabsService(), []);
 
   useEffect(() => {
     if (settings.musicEnabled && !isPaused) {

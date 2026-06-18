@@ -1,7 +1,199 @@
+import express from "express";
+import { createServer } from "http";
 import { Server } from "socket.io";
-import type { Painting } from "../types/painting";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import dotenv from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
+import { GoogleGenAI } from "@google/genai";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import type { Painting } from "../types/painting";
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+
+// Security: Enable CORS for the frontend origin
+app.use(cors({
+  origin: "https://arts-lac.vercel.app",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "ngrok-skip-browser-warning"]
+}));
+
+app.use(express.json({ limit: "50mb" }));
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." }
+});
+app.use("/api/", apiLimiter);
+
+// Initialize SDKs using server-side keys
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || process.env.VITE_ELEVENLABS_API_KEY;
+
+const gemini = new GoogleGenAI({ apiKey: geminiApiKey || "" });
+const elevenLabs = new ElevenLabsClient({ apiKey: elevenLabsApiKey || "" });
+
+app.post("/api/analyze", async (req, res) => {
+  try {
+    const { imageData, paintingTitle, paintingArtist, paintingYear, context, authors_intention, isUnknown } = req.body;
+
+    if (!imageData) {
+      return res.status(400).json({ error: "Missing imageData" });
+    }
+
+    const imagePart = {
+      inlineData: {
+        data: imageData,
+        mimeType: "image/jpeg",
+      },
+    };
+
+    const prompt = `### ROLE: 
+      Expert Art Historian, Semiotician, Musicologist, and Audio Engineer.
+
+      ### OBJECTIVE:
+      Analyze ${isUnknown ? "this unidentified artwork" : `"${paintingTitle}" by ${paintingArtist} (${paintingYear})`} to generate a multifaceted emotional and auditory profile.
+
+      ### SONIFICATION MAPPING RULES:
+      - **Color Temperature & Hue**: Map to Pitch Range, Mode, and Tempo (Warm = High pitch/Fast tempo; Cold = Low pitch/Slow tempo).
+      - **Saturation**: Map to Tempo, Pitch Range, and Mode (High saturation = Fast tempo/Major mode; Low saturation = Slow tempo/Minor mode).
+      - **Brushstroke Texture**: Map to Rhythm Types and Timbre (Rough = Irregular rhythm/Sharp timbre; Smooth = Regular rhythm/Pure timbre).
+      - **Compositional Weight**: Map to Musical Structure and Melodic Movement (High symmetry = Stepwise movement/Predictable structure; Asymmetrical = Intervallic leaps).
+      - **Lighting**: Map to Volume Envelope and Dynamics (Hard shadows = Sharp attack/Loud dynamics; Soft shadows = Slow attack/Soft dynamics).
+      - **Visual Complexity**: Map to Musical Form Complexity and Dynamism (High complexity = High musical complexity/High dynamism; Low complexity = Repetitive structures).
+      - **Instruments Selection**: Map strictly to Timbre/Tone Color (Aggressive visuals = Sharp/rich timbres; Serene visuals = Pure/bright timbres).
+
+      ${isUnknown ? `### SPECIAL INSTRUCTION:
+      As this painting is not in our database, please perform a blind visual analysis. Identify the likely style, potential period, and key visual elements to create the soundscape.` : `### CONTEXT:
+      - **Contexto Histórico:** ${context}
+      - **Intenção do Autor:** ${authors_intention}`}
+
+      ### TASKS:
+      1. Conduct an analysis of the visual elements ${isUnknown ? "purely from the image" : "integrated with the provided historical context"}.
+      2. Generate a "Soundscape Profile" and Prompt for the Lyria AI generator.
+      3. Generate recognizable SFX prompts for specific detected objects.
+
+      ### OUTPUT REQUIREMENTS:
+      - **Language:** Strings intended for user playback (ArtDescription, ArtAnalysis, DetectedEmotions, Object) MUST be in European Portuguese (PT-PT). Strings intended for AI generation models (MusicPrompt.Prompt and SoundEffectPrompt) MUST be strictly in English.
+      - **Format:** Strict JSON. No conversational filler.
+      - **Tone:** Analytical, evocative, and psychologically grounded.
+      - **Detected Objects Rules:** List of the most relevantly detected objects in the painting (up to 5 objects). Do not force 5 objects; only include objects that are significant to the composition or atmosphere. Can be as few as 1 or 2 if the painting is simple. Order by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance).
+      - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
+      - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
+      - **Audio Description Rules:** Write for a Blind or Low Vision audience. Use a clear spatial logic (e.g., foreground to background, or left to right) to help the user construct a mental map. 
+      
+      ### JSON SCHEMA & KEYS:
+      {
+        "ArtDescription": "Breve descrição física da obra.",
+        "ArtAnalysis": "Análise profunda correlacionando estética e contexto histórico.",
+        "DetectedEmotions": ["Emoção 1", "Emoção 2"],
+        "MusicPrompt": {
+          "Instruments": "Lista de instrumentos baseada na textura visual.",
+          "MusicGenre": "Género musical que reflete a época e o sentimento.",
+          "Mood": "Atmosfera emocional.",
+          "Prompt": "Detailed descriptive paragraph for music generation using detected emotions and selected instruments, genre and mood. (MUST BE IN ENGLISH)",
+          "Config": {
+            "Guidance": "How closely the music should follow the prompt (0.0-6.0).",
+            "bpm": "Suggested tempo in beats per minute. (60-200)",
+            "Density": "Level of orchestration density (0.0-1.0).",
+            "Brightness": "Overall brightness of the music (0.0-1.0).",
+            "Scale": "Musical scale or mode that reflects the painting's emotional tone. (C_MAJOR_A_MINOR, D_FLAT_MAJOR_B_FLAT_MINOR, D_MAJOR_B_MINOR, E_FLAT_MAJOR_C_MINOR, E_MAJOR_D_FLAT_MINOR, F_MAJOR_D_MINOR, G_FLAT_MAJOR_E_FLAT_MINOR, G_MAJOR_E_MINOR, A_FLAT_MAJOR_F_MINOR, A_MAJOR_G_FLAT_MINOR, B_FLAT_MAJOR_G_MINOR, B_MAJOR_A_FLAT_MINOR, SCALE_UNSPECIFIED)",
+            "Mute-bass": "Whether to mute the bass instruments (True/False).",
+            "Mute-drums": "Whether to mute the drum/percussion instruments (True/False).",
+            "Only-bass-and-drums": "Whether to include only bass and drum/percussion instruments (True/False).",
+            "Music-generation-mode": "Indicates to the model if it should focus on QUALITY (default value) or DIVERSITY of music. It can also be set to VOCALIZATION to let the model generate vocalizations as another instrument."
+          }
+        },
+        "DetectedObjects": [
+          {
+            "Object": "Nome do objeto",
+            "SoundEffectPrompt": "Simple, short, and highly identifiable sound effect prompt. Use literal descriptions like 'gentle low frequency clock ticking', 'soft wind whistling', 'distant church bell'. Ensure it is easily recognizable, acoustically clear, and pleasant to listen to. Do not generate harsh, sudden, or jarring sounds. (MUST BE IN ENGLISH)",
+            "Pan": "A number between -1.0 (left) and 1.0 (right) representing the object's horizontal position in the painting. (e.g., -0.5 for an object on the mid-left, 0.8 for far right, 0.0 for center)"
+          }
+        ]
+      }`;
+
+    const result = await gemini.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }, imagePart] }],
+      config: { responseMimeType: "application/json" }
+    });
+
+    let text = result?.text ?? "{}";
+    text = text.trim();
+    if (text.startsWith("\`\`\`json")) text = text.slice(7);
+    else if (text.startsWith("\`\`\`")) text = text.slice(3);
+    if (text.endsWith("\`\`\`")) text = text.slice(0, -3);
+    text = text.trim();
+
+    res.json(JSON.parse(text));
+  } catch (error) {
+    console.error("Proxy: Gemini Analysis Error:", error);
+    res.status(500).json({ error: "Failed to analyze painting" });
+  }
+});
+
+app.post("/api/tts/gemini", async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "Missing text" });
+
+    const result = await gemini.models.generateContent({ 
+      model: "gemini-3.1-flash-tts-preview",
+      contents: [{ role: 'user', parts: [{ text }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },
+          languageCode: "pt-PT",
+        }
+      }
+    });
+
+    const audioPart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    const base64Audio = audioPart?.inlineData?.data;
+
+    if (!base64Audio) throw new Error('TTS returned empty audio data');
+
+    res.json({ audioData: base64Audio });
+  } catch (error) {
+    console.error("Proxy: Gemini TTS Error:", error);
+    res.status(500).json({ error: "Failed to generate TTS" });
+  }
+});
+
+app.post("/api/sfx", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Missing prompt" });
+
+    const audioStream = await elevenLabs.textToSoundEffects.convert({
+      text: prompt,
+      durationSeconds: 5,
+      promptInfluence: 0.3,
+    });
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of audioStream as any) {
+      chunks.push(Buffer.from(chunk));
+    }
+
+    if (chunks.length === 0) throw new Error('ElevenLabs returned empty audio stream');
+
+    const buffer = Buffer.concat(chunks);
+    res.json({ audioData: buffer.toString('base64') });
+  } catch (error) {
+    console.error("Proxy: ElevenLabs SFX Error:", error);
+    res.status(500).json({ error: "Failed to generate SFX" });
+  }
+});
 
 const DEBUG_FOLDER = path.join(process.cwd(), "debug_analysis");
 
@@ -9,7 +201,7 @@ if (!fs.existsSync(DEBUG_FOLDER)) {
   fs.mkdirSync(DEBUG_FOLDER, { recursive: true });
 }
 
-const io = new Server(8000, {
+const io = new Server(httpServer, {
   cors: {
     origin: "*",
     allowedHeaders: ["ngrok-skip-browser-warning"]
@@ -102,5 +294,7 @@ ${(data.analysis.DetectedObjects || []).map((obj: any) => `- ${obj.Object}: ${ob
   });
 });
 
-console.log("Server running on port 8000");
-
+const PORT = process.env.PORT || 8000;
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
