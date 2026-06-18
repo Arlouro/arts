@@ -526,8 +526,13 @@ button, a {
 
 @media (max-width: 768px) {
   .onboarding-content {
-    padding: 2.5vh;
-    gap: 2vh;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 1vh 0;
+    gap: 2.5vh;
+    max-width: 95%;
+    width: 100%;
   }
   .onboarding-content h1 {
     font-size: 1.5rem;
