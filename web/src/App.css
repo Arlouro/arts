@@ -131,7 +131,7 @@ button, a {
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(6, 1fr);
+    grid-template-rows: repeat(6, minmax(14vh, 1fr));
     gap: 1vh;
     padding: 1vh;
   }

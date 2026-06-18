@@ -170,7 +170,7 @@ export const LyriaPlayer: React.FC = () => {
     if (isPaused || !hasInteracted || !isSearching) return;
 
     if (isProcessing && activePainting) {
-      announce(`Quadro identificado: ${activePainting.title}. A gerar paisagem sonora. Este processo demora alguns segundos, por favor aguarde até a música começar a tocar.`, `painting_${activePainting.id}`);
+      announce("A analisar a emoção da obra e a compor o som. Pode demorar alguns segundos.", "processing");
     } else if (!isProcessing && activePainting) {
       
     } else if (detectionStatus === 'idle') {
