@@ -6,7 +6,7 @@ export const useGemini = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const service = useMemo(() => new GeminiService(import.meta.env.VITE_GEMINI_API_KEY), []);
+  const service = useMemo(() => new GeminiService(), []);
 
   const generatePrompt = useCallback(async (painting: Painting) => {
     setLoading(true);

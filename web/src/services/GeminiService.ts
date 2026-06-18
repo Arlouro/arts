@@ -6,7 +6,6 @@ const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localho
 
 export class GeminiService {
   constructor() {
-    // API Key is now securely managed by the backend proxy.
   }
 
   async getBase64Image(path: string, rawData?: string): Promise<string> {

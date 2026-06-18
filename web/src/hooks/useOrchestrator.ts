@@ -7,7 +7,7 @@ import type { Painting } from '../types/painting.ts';
 import { useYolo } from './useYolo.ts';
 import { useSettings } from './useSettings.ts';
 
-export const useOrchestrator = (apiKey: string, elevenLabsApiKey: string, isSearching: boolean = false) => {
+export const useOrchestrator = (apiKey: string, isSearching: boolean = false) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePainting, setActivePainting] = useState<Painting | null>(null);
   const [currentPrompt, setCurrentPrompt] = useState<string>("");

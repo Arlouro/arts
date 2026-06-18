@@ -34,7 +34,7 @@ export const LyriaPlayer: React.FC = () => {
     criticalError,
     failedTasks,
     stopAll 
-  } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, import.meta.env.VITE_ELEVENLABS_API_KEY, isSearching);
+  } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, isSearching);
 
   const [paintings, setPaintings] = useState<any[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

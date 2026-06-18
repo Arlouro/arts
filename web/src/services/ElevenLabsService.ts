@@ -32,8 +32,8 @@ export class ElevenLabsService {
           });
 
           if (!response.ok) {
-             const errorData = await response.json().catch(() => ({}));
-             throw new Error(errorData.error || `SFX proxy responded with ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `SFX proxy responded with ${response.status}`);
           }
 
           const { audioData: base64Audio } = await response.json();

@@ -8,9 +8,8 @@ export class GeminiTTSService {
   private activeNodes: Set<{ source: AudioBufferSourceNode, gainNode: GainNode }> = new Set();
 
   constructor() {
-    // API Key is managed securely by the backend proxy.
   }
- 
+
   private initAudio() {
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
@@ -33,8 +32,8 @@ export class GeminiTTSService {
           });
 
           if (!response.ok) {
-             const errorData = await response.json().catch(() => ({}));
-             throw new Error(errorData.error || `TTS proxy responded with ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `TTS proxy responded with ${response.status}`);
           }
 
           const { audioData: base64Audio } = await response.json();
