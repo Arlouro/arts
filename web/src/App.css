@@ -445,9 +445,9 @@ button, a {
   z-index: 300;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 4vh 2vh;
-  overflow-y: auto;
+  align-items: center;
+  padding: 2vh;
+  overflow: hidden;
 }
 
 .onboarding-content {
@@ -457,11 +457,12 @@ button, a {
   padding: 4vh;
   max-width: 90vw;
   width: 600px;
+  max-height: 96vh;
   display: flex;
   flex-direction: column;
   gap: 3vh;
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
-  margin: auto;
+  overflow-y: auto;
 }
 
 .onboarding-content h1 {
@@ -509,6 +510,14 @@ button, a {
   height: auto !important;
   padding: 2vh 4vh !important;
   max-width: 350px;
+  width: 100%;
   align-self: center;
   border-bottom: 1vh solid var(--accent) !important;
+}
+
+.onboarding-start-btn span {
+  text-align: center !important;
+  white-space: normal;
+  font-size: clamp(1rem, 5vw, 1.5rem) !important;
+  line-height: 1.2 !important;
 }
