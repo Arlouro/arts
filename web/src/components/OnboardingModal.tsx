@@ -22,7 +22,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => 
       >
         <h1 id="onboarding-title" ref={titleRef} tabIndex={-1}>Bem-vindo ao ARTS</h1>
         <p id="onboarding-desc" className="onboarding-subtitle">
-          Este sistema utiliza obras de arte visuais para gerar paisagens sonoras, criando uma experiência alternativa e imersiva para a apreciação da arte.
+          O sistema utiliza obras de arte visuais para gerar paisagens sonoras, criando uma forma alternativa de apreciação da arte.
         </p>
         
         <div className="onboarding-steps">
