@@ -3,6 +3,7 @@ import { useOrchestrator } from '../hooks/useOrchestrator';
 import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
 import { CameraStream } from './CameraStream';
+import { OnboardingModal } from './OnboardingModal';
 import type { Painting } from '../types/painting';
 
 const IS_DEV_MODE = import.meta.env.VITE_SHOW_CAMERA === 'true'; 
@@ -46,7 +47,17 @@ export const LyriaPlayer: React.FC = () => {
   const [modalMessage, setModalMessage] = useState("");
   const [modalVariant, setModalVariant] = useState<'warning' | 'error'>('warning');
 
-  const isOverlayActive = isSettingsOpen || isModalOpen || !!criticalError;
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('arts_onboarding_seen') !== 'true';
+  });
+
+  const isOverlayActive = showOnboarding || isSettingsOpen || isModalOpen || !!criticalError;
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('arts_onboarding_seen', 'true');
+    setShowOnboarding(false);
+  };
 
   // Audio announcement tracking
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -440,6 +451,10 @@ export const LyriaPlayer: React.FC = () => {
           }}
           announce={announce}
         />
+      )}
+
+      {showOnboarding && (
+        <OnboardingModal onStart={handleOnboardingComplete} />
       )}
 
       <NotificationModal 

@@ -27,12 +27,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       isInitialFocus.current = true;
-      const timer = setTimeout(() => {
-        const suffix = isError ? 'Botão Reiniciar Sistema.' : 'Botão Fechar.';
-        const prefix = isError ? 'Erro do sistema: ' : '';
-        announce(`${prefix}${message}. ${suffix}`);
-        actionButtonRef.current?.focus();
-      }, 150);
+      actionButtonRef.current?.focus();
       
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Tab') {
@@ -58,7 +53,6 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       dialog?.addEventListener('keydown', handleKeyDown);
       
       return () => {
-        clearTimeout(timer);
         dialog?.removeEventListener('keydown', handleKeyDown);
       };
     }

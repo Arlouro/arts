@@ -433,3 +433,82 @@ button, a {
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* Onboarding Modal Styles */
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 4vh 2vh;
+  overflow-y: auto;
+}
+
+.onboarding-content {
+  background: var(--card-bg);
+  border: 0.8vh solid var(--accent);
+  border-radius: 3vh;
+  padding: 4vh;
+  max-width: 90vw;
+  width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 3vh;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+  margin: auto;
+}
+
+.onboarding-content h1 {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(1.8rem, 4vh, 2.5rem);
+  text-align: center;
+}
+
+.onboarding-subtitle {
+  font-size: clamp(1.1rem, 2.5vh, 1.4rem);
+  color: var(--text);
+  line-height: 1.5;
+  text-align: center;
+  margin: 0;
+}
+
+.onboarding-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+}
+
+.onboarding-steps p.step-item {
+  font-size: clamp(1rem, 2.2vh, 1.2rem);
+  line-height: 1.4;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.3);
+  padding: 2vh;
+  border-radius: 1.5vh;
+  margin: 0;
+}
+
+.step-item strong {
+  color: var(--text);
+  display: block;
+  margin-bottom: 0.5vh;
+}
+
+.onboarding-start-btn {
+  margin-top: 2vh;
+  height: auto !important;
+  padding: 2vh 4vh !important;
+  max-width: 350px;
+  align-self: center;
+  border-bottom: 1vh solid var(--accent) !important;
+}
