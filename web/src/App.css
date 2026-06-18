@@ -540,9 +540,9 @@ button, a {
     padding: 1.5vh;
   }
   .onboarding-start-btn {
-    padding: 1.5vh 2vh !important;
+    padding: 3vh 2vh !important;
   }
   .onboarding-start-btn span {
-    font-size: 1rem !important;
+    font-size: 1.2rem !important;
   }
 }
