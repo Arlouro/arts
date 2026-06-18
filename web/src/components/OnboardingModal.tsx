@@ -27,7 +27,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => 
         
         <div className="onboarding-steps">
           <p className="step-item">
-            <strong>Passo 1 - Aponte a câmara:</strong> Direcione o seu dispositivo para uma obra de arte.
+            <strong>Passo 1 - Aponte a câmara:</strong> Clique no botão de procura de obra e direcione o seu dispositivo para uma obra de arte.
           </p>
           <p className="step-item">
             <strong>Passo 2 - Aguarde a análise:</strong> O processamento da imagem e a geração da música demoram alguns segundos.
