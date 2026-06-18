@@ -510,11 +510,13 @@ button, a {
 .onboarding-start-btn {
   margin-top: 2vh;
   height: auto !important;
-  padding: 2vh 3vw !important;
+  min-height: 8vh;
+  padding: 2vh 2vw !important;
   max-width: 450px;
   width: 100%;
   align-self: center;
   border-bottom: 1vh solid var(--accent) !important;
+  flex-shrink: 0;
 }
 
 .onboarding-start-btn span {
