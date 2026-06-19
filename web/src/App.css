@@ -378,6 +378,7 @@
   flex: 1;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: auto;
   grid-auto-rows: 1fr;
   gap: 2vh;
   padding: 0 4vw 4vh 4vw;
@@ -388,6 +389,7 @@
   margin: 0 0 1vh 0;
   font-size: clamp(1.4rem, 2.5vh, 2rem);
   font-weight: 800;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 2px;
   color: var(--accent);
