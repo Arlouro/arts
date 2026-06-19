@@ -63,7 +63,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
       </div>
 
       <div className="settings-grid">
-        <h3 style={{ gridColumn: '1 / -1', margin: '0 0 1vh 0', fontSize: '2rem', textTransform: 'uppercase', color: 'var(--accent)' }}>Filtros</h3>
+        <h2 className="settings-section-title">Filtros</h2>
         
         {/* Filters */}
         <button type="button"
