@@ -319,17 +319,17 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce(
-            !isSearching ? "Procurar quadro" : "Parar pesquisa",
-            isSearching ? "stop_audio" : undefined,
+            !isSearching ? "Procurar quadro" : "Parar procura de quadro",
+            undefined,
             true
           )}
-          aria-label={!isSearching ? "Procurar quadro" : "Parar pesquisa"}
+          aria-label={!isSearching ? "Procurar quadro" : "Parar procura de quadro"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className={!isSearching ? 'fa-solid fa-magnifying-glass' : 'fa-regular fa-circle-stop'}></i>
           </span>
-          <span>{!isSearching ? 'Procurar quadro' : 'Parar pesquisa'}</span>
+          <span>{!isSearching ? 'Procurar quadro' : 'Parar procura de quadro'}</span>
         </button>
 
         <button type="button"
@@ -454,7 +454,7 @@ export const LyriaPlayer: React.FC = () => {
       )}
 
       {showOnboarding && (
-        <OnboardingModal onStart={handleOnboardingComplete} />
+        <OnboardingModal onStart={handleOnboardingComplete} announce={announce} />
       )}
 
       <NotificationModal 

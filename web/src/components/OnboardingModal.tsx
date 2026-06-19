@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 interface OnboardingModalProps {
   onStart: () => void;
+  announce: (text: string, key?: string, force?: boolean) => void;
 }
 
 interface OnboardingPage {
@@ -49,7 +50,7 @@ const PAGES: OnboardingPage[] = [
 /** Each page gets its own accent colour for visual differentiation */
 const PAGE_COLORS = ['#2196f3', '#ffeb3b', '#ff9800', '#4caf50'];
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => {
+export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, announce }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -134,6 +135,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => 
             type="button"
             className="onboarding-skip"
             onClick={onStart}
+            onMouseEnter={() => announce("Saltar introdução", "onboarding_skip", true)}
             aria-label="Saltar introdução e começar a usar o ARTS"
           >
             Saltar
@@ -187,6 +189,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => 
                     i === currentPage ? ' onboarding-dot--active' : ''
                   }`}
                   onClick={() => navigateTo(i)}
+                  onMouseEnter={() => announce(`Ir para passo ${i + 1}`, `onboarding_dot_${i}`, true)}
                   aria-label={`Ir para passo ${i + 1} de ${PAGES.length}: ${
                     p.title
                   }`}
@@ -203,6 +206,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => 
             type="button"
             className="onboarding-nav-btn onboarding-nav-btn--prev"
             onClick={handlePrev}
+            onMouseEnter={() => !isFirstPage && announce("Passo anterior", "onboarding_prev", true)}
             disabled={isFirstPage}
             aria-label="Passo anterior"
           >
@@ -216,6 +220,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart }) => 
               isLastPage ? ' onboarding-nav-btn--start' : ''
             }`}
             onClick={handleNext}
+            onMouseEnter={() => announce(isLastPage ? "Começar" : "Próximo passo", "onboarding_next", true)}
             aria-label={
               isLastPage ? 'Começar a usar o ARTS' : 'Próximo passo'
             }
