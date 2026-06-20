@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useOrchestrator } from '../hooks/useOrchestrator';
 import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
@@ -39,24 +40,31 @@ export const LyriaPlayer: React.FC = () => {
   } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, isSearching);
 
   const [paintings, setPaintings] = useState<any[]>([]);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [hasInteracted, setHasInteracted] = useState(false);
+
+  const isSettingsOpen = location.pathname === '/settings';
+  const showOnboarding = location.pathname === '/onboarding';
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalVariant, setModalVariant] = useState<'warning' | 'error'>('warning');
 
-  // Onboarding state
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return localStorage.getItem('arts_onboarding_seen') !== 'true';
-  });
-
   const isOverlayActive = showOnboarding || isSettingsOpen || isModalOpen || !!criticalError;
+
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('arts_onboarding_seen') === 'true';
+    if (!hasSeenOnboarding && location.pathname === '/') {
+      navigate('/onboarding', { replace: true });
+    }
+  }, [navigate, location.pathname]);
 
   const handleOnboardingComplete = () => {
     localStorage.setItem('arts_onboarding_seen', 'true');
-    setShowOnboarding(false);
+    navigate('/', { replace: true });
   };
 
   // Audio announcement tracking
@@ -280,15 +288,15 @@ export const LyriaPlayer: React.FC = () => {
           <span className="sr-only">Estado do sistema:</span>
           {currentStatus}
         </div>
-        <button type="button"
+        <Link
+          to="/settings"
           className="header-btn-settings"
-          onClick={() => setIsSettingsOpen(true)}
           onMouseEnter={() => announce("Definições", "settings", true)}
           aria-label="Abrir definições do sistema"
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <i className="fa-solid fa-gear" aria-hidden="true"></i>
-        </button>
+        </Link>
       </header>
 
       <main className="main-content" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
@@ -439,23 +447,19 @@ export const LyriaPlayer: React.FC = () => {
         </nav>
       </main>
 
-      {isSettingsOpen && (
-        <SettingsMenu 
-          settings={settings}
-          onUpdate={updateSettings}
-          onClose={() => {
-            setIsSettingsOpen(false);
-            setTimeout(() => {
-              document.querySelector<HTMLButtonElement>('.header-btn-settings')?.focus();
-            }, 0);
-          }}
-          announce={announce}
-        />
-      )}
-
-      {showOnboarding && (
-        <OnboardingModal onStart={handleOnboardingComplete} announce={announce} />
-      )}
+      <Routes>
+        <Route path="settings" element={
+          <SettingsMenu 
+            settings={settings}
+            onUpdate={updateSettings}
+            onClose={() => navigate(-1)}
+            announce={announce}
+          />
+        } />
+        <Route path="onboarding" element={
+          <OnboardingModal onStart={handleOnboardingComplete} announce={announce} />
+        } />
+      </Routes>
 
       <NotificationModal 
         isOpen={isModalOpen}

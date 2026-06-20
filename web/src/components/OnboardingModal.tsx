@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface OnboardingModalProps {
   onStart: () => void;
@@ -129,10 +130,19 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
           { '--page-accent': PAGE_COLORS[currentPage] } as React.CSSProperties
         }
       >
+        <div style={{ position: 'absolute', top: 'clamp(16px, 2vh, 24px)', left: 'clamp(16px, 4vw, 24px)' }}>
+          <nav aria-label="Navegação estrutural" className="breadcrumbs">
+            <ol>
+              <li><Link to="/">Início</Link></li>
+              <li aria-current="page">Introdução</li>
+            </ol>
+          </nav>
+        </div>
+
         {/* Skip button */}
         {!isLastPage && (
-          <button
-            type="button"
+          <Link
+            to="/"
             className="onboarding-skip"
             onClick={onStart}
             onMouseEnter={() => announce("Saltar introdução", "onboarding_skip", true)}
@@ -140,7 +150,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
           >
             Saltar
             <i className="fa-solid fa-forward" aria-hidden="true" />
-          </button>
+          </Link>
         )}
 
         <div className="sr-only" aria-live="polite" aria-atomic="true">
