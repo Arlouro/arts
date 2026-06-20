@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import type { Settings } from '../types/settings';
 
 interface SettingsMenuProps {
@@ -34,15 +33,13 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
             e.preventDefault();
           }
         }
-      } else if (e.key === 'Escape') {
-        onClose();
       }
     };
 
     const dialog = dialogRef.current;
     dialog?.addEventListener('keydown', handleKeyDown);
     return () => dialog?.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, []);
 
   return (
     <div 
@@ -54,23 +51,15 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
       tabIndex={-1}
     >
       <div className="settings-header">
-        <div className="settings-header-title-group">
-          <nav aria-label="Navegação estrutural" className="breadcrumbs">
-            <ol>
-              <li><Link to="/">Início</Link></li>
-              <li aria-current="page">Definições</li>
-            </ol>
-          </nav>
-          <h2 id="settings-title">Definições</h2>
-        </div>
-        <Link
-          to="/"
+        <h2 id="settings-title">Definições</h2>
+        <button type="button"
           className="close-button" 
+          onClick={onClose}
           onMouseEnter={() => announce("Fechar definições", "close_settings")}
           aria-label="Fechar definições"
         >
-          <i className="fa-solid fa-xmark" aria-hidden="true"></i>
-        </Link>
+          <i className="fa-regular fa-circle-xmark"></i>
+        </button>
       </div>
 
       <div className="settings-grid">

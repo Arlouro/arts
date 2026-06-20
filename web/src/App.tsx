@@ -53,8 +53,6 @@ const playUiClick = (element: HTMLElement) => {
   }
 };
 
-import { BrowserRouter } from 'react-router-dom';
-
 function App() {
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -70,9 +68,7 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <LyriaPlayer />
-    </BrowserRouter>
+    <LyriaPlayer />
   );
 }
 
