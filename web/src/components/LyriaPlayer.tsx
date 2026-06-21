@@ -57,6 +57,9 @@ export const LyriaPlayer: React.FC = () => {
   const handleOnboardingComplete = () => {
     localStorage.setItem('arts_onboarding_seen', 'true');
     setShowOnboarding(false);
+    if (!closedViaPopState.current) {
+      window.history.back();
+    }
   };
 
   // Audio announcement tracking
@@ -64,6 +67,42 @@ export const LyriaPlayer: React.FC = () => {
   const lastAnnouncedKey = useRef<string | null>(null);
   const lastStatusAnnouncementRef = useRef<number>(0);
   const currentTtsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const closedViaPopState = useRef(false);
+  const overlayStateRef = useRef({ isSettingsOpen: false, showOnboarding: false });
+  overlayStateRef.current = { isSettingsOpen, showOnboarding };
+
+  useEffect(() => {
+    if (showOnboarding) {
+      window.history.pushState({ overlay: 'onboarding' }, '', '#onboarding');
+    } else if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []); 
+
+  useEffect(() => {
+    const handlePopState = () => {
+      closedViaPopState.current = true;
+      const { isSettingsOpen: settingsOpen, showOnboarding: onboardingOpen } = overlayStateRef.current;
+
+      if (settingsOpen) {
+        setIsSettingsOpen(false);
+        setTimeout(() => {
+          document.querySelector<HTMLButtonElement>('.header-btn-settings')?.focus();
+        }, 0);
+      }
+      if (onboardingOpen) {
+        localStorage.setItem('arts_onboarding_seen', 'true');
+        setShowOnboarding(false);
+      }
+
+      requestAnimationFrame(() => {
+        closedViaPopState.current = false;
+      });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const handleInteraction = () => {
@@ -211,8 +250,13 @@ export const LyriaPlayer: React.FC = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isSettingsOpen || isModalOpen) {
         if (event.key === 'Escape') {
-          setIsSettingsOpen(false);
-          setIsModalOpen(false);
+          if (isSettingsOpen) {
+            setIsSettingsOpen(false);
+            window.history.back();
+          }
+          if (isModalOpen) {
+            setIsModalOpen(false);
+          }
         }
         return;
       }
@@ -282,7 +326,10 @@ export const LyriaPlayer: React.FC = () => {
         </div>
         <button type="button"
           className="header-btn-settings"
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => {
+            setIsSettingsOpen(true);
+            window.history.pushState({ overlay: 'settings' }, '', '#settings');
+          }}
           onMouseEnter={() => announce("Definições", "settings", true)}
           aria-label="Abrir definições do sistema"
           tabIndex={isOverlayActive ? -1 : 0}
@@ -340,10 +387,10 @@ export const LyriaPlayer: React.FC = () => {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a áudio-descrição: nenhuma obra foi identificada.");
             } else if (failedTasks['tts-description']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a áudio-descrição. Verifique a sua ligação à internet.", "error");
+            } else if (!settings.descriptionEnabled) {
+              handleActionWithCheck(() => {}, false, "A áudio-descrição está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!descriptionText) {
               handleActionWithCheck(() => {}, false, "A áudio-descrição ainda está a ser gerada. Por favor, aguarde.");
-            } else if (!settings.descriptionEnabled) {
-              handleActionWithCheck(() => {}, false, "A áudio-descrição está desativada nas definições.");
             } else {
               playDescription();
             }
@@ -354,8 +401,8 @@ export const LyriaPlayer: React.FC = () => {
             isDescriptionPlaying ? "A áudio-descrição está a ser reproduzida" :
             !activePainting ? "Áudio-descrição não disponível pois nenhuma obra foi detetada" :
             failedTasks['tts-description'] ? "Erro na áudio-descrição. Verifique a internet" :
-            !descriptionText ? "A áudio-descrição ainda está a ser gerada" :
             !settings.descriptionEnabled ? "Áudio-descrição desativada nas definições" :
+            !descriptionText ? "A áudio-descrição ainda está a ser gerada" :
             "Tocar Áudio-descrição da obra"
           }
           tabIndex={isOverlayActive ? -1 : 0}
@@ -374,10 +421,10 @@ export const LyriaPlayer: React.FC = () => {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhuma obra foi identificada.");
             } else if (failedTasks['tts-analysis'] || failedTasks['sfx']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a análise detalhada e os efeitos sonoros. Verifique a sua ligação à internet.", "error");
+            } else if (!settings.analysisEnabled) {
+              handleActionWithCheck(() => {}, false, "A análise detalhada está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!analysisText) {
               handleActionWithCheck(() => {}, false, "A análise detalhada ainda está a ser gerada. Por favor, aguarde.");
-            } else if (!settings.analysisEnabled) {
-              handleActionWithCheck(() => {}, false, "A análise detalhada está desativada nas definições.");
             } else {
               playAnalysis();
             }
@@ -388,8 +435,8 @@ export const LyriaPlayer: React.FC = () => {
             isAnalysisPlaying ? "A análise detalhada está a ser reproduzida" :
             !activePainting ? "Análise Detalhada não disponível pois nenhuma obra foi detetada" :
             (failedTasks['tts-analysis'] || failedTasks['sfx']) ? "Erro na análise detalhada. Verifique a internet" :
-            !analysisText ? "A análise detalhada ainda está a ser gerada" :
             !settings.analysisEnabled ? "Análise detalhada desativada nas definições" :
+            !analysisText ? "A análise detalhada ainda está a ser gerada" :
             "Tocar Análise Detalhada da obra e som de objetos identificados"
           }
           tabIndex={isOverlayActive ? -1 : 0}
@@ -408,12 +455,14 @@ export const LyriaPlayer: React.FC = () => {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
             } else if (activePainting.id.toString().startsWith("unknown")) {
               handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível porque a obra é desconhecida e não consta na base de dados.");
+            } else if (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") {
+              handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível para esta obra.");
             } else if (failedTasks['tts-intention']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a intenção do autor. Verifique a sua ligação à internet.", "error");
+            } else if (!settings.intentionEnabled) {
+              handleActionWithCheck(() => {}, false, "A intenção do autor está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!authorsIntentionText) {
               handleActionWithCheck(() => {}, false, "A intenção do autor ainda está a ser gerada. Por favor, aguarde.");
-            } else if (!settings.intentionEnabled) {
-              handleActionWithCheck(() => {}, false, "A intenção do autor está desativada nas definições.");
             } else {
               playAuthorsIntention();
             }
@@ -424,9 +473,10 @@ export const LyriaPlayer: React.FC = () => {
             isIntentionPlaying ? "A intenção do autor está a ser reproduzida" :
             !activePainting ? "Intenção do Autor não disponível pois nenhuma obra foi detetada" :
             activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para obras desconhecidas" :
+            (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") ? "A intenção do autor não está disponível para esta obra" :
             failedTasks['tts-intention'] ? "Erro na intenção do autor. Verifique a internet" :
-            !authorsIntentionText ? "A intenção do autor ainda está a ser gerada" :
             !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
+            !authorsIntentionText ? "A intenção do autor ainda está a ser gerada" :
             "Tocar Intenção do Autor da obra"
           }
           tabIndex={isOverlayActive ? -1 : 0}
@@ -445,6 +495,9 @@ export const LyriaPlayer: React.FC = () => {
           onUpdate={updateSettings}
           onClose={() => {
             setIsSettingsOpen(false);
+            if (!closedViaPopState.current) {
+              window.history.back();
+            }
             setTimeout(() => {
               document.querySelector<HTMLButtonElement>('.header-btn-settings')?.focus();
             }, 0);
