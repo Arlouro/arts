@@ -260,7 +260,7 @@
 
 /* --- Notification Buttons --- */
 .btn-ok {
-  border-left: 4px solid var(--success);
+  border-left: 4px solid var(--accent);
   max-width: 250px;
   height: auto;
   padding: 2vh 4vh;
