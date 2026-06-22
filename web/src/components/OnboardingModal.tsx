@@ -56,6 +56,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  const onStartRef = useRef(onStart);
+  useEffect(() => { onStartRef.current = onStart; });
+
   const isLastPage = currentPage === PAGES.length - 1;
   const isFirstPage = currentPage === 0;
   const page = PAGES[currentPage];
@@ -73,6 +76,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
     if (!dialog) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onStartRef.current();
+        return;
+      }
+
       if (e.key !== 'Tab') return;
 
       const focusable = dialog.querySelectorAll<HTMLElement>(
@@ -159,14 +168,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
             </div>
           </div>
 
-          <h1
+          <h2
             id="onboarding-title"
             ref={headingRef}
             tabIndex={-1}
             className="onboarding-page-title"
           >
             {page.title}
-          </h1>
+          </h2>
 
           <p id="onboarding-desc" className="onboarding-page-description">
             {page.description}

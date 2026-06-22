@@ -56,11 +56,11 @@ export class LyriaService {
     }
   }
 
-  public async connect(prompt: string) {
+  public async connect(prompt: string, startMuted: boolean = false) {
     try {
       this.setStatus('connecting');
       await this.initAudio();
-      this.setVolume(1.0);
+      this.setVolume(startMuted ? 0 : 1.0);
 
       await withRetry(
         async () => {

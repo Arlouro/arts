@@ -17,7 +17,7 @@ EMA_ALPHA     = 0.4
 DWELL_SECONDS = 1     
 CENTER_ZONE   = 0.08  
 BORDER_MARGIN = 0.05  
-START_DELAY   = 1     
+START_DELAY   = 0.5     
 
 ema_positions      = {}  
 dwell_start_times  = {}

@@ -20,43 +20,54 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
 }) => {
   const actionButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const isInitialFocus = useRef(true);
 
   const isError = variant === 'error';
 
   useEffect(() => {
-    if (isOpen) {
-      isInitialFocus.current = true;
-      actionButtonRef.current?.focus();
-      
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Tab') {
-          const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          );
-          if (focusableElements && focusableElements.length > 0) {
-            const firstElement = focusableElements[0];
-            const lastElement = focusableElements[focusableElements.length - 1];
+    if (!isOpen) return;
 
-            if (e.shiftKey && document.activeElement === firstElement) {
-              lastElement.focus();
-              e.preventDefault();
-            } else if (!e.shiftKey && document.activeElement === lastElement) {
-              firstElement.focus();
-              e.preventDefault();
-            }
-          }
-        }
-      };
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    isInitialFocus.current = true;
 
-      const dialog = dialogRef.current;
-      dialog?.addEventListener('keydown', handleKeyDown);
-      
-      return () => {
-        dialog?.removeEventListener('keydown', handleKeyDown);
-      };
-    }
-  }, [isOpen, message, announce, isError]);
+    const frame = requestAnimationFrame(() => contentRef.current?.focus());
+
+    return () => {
+      cancelAnimationFrame(frame);
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      const focusableElements = dialog.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements.length === 0) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        lastElement.focus();
+        e.preventDefault();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        firstElement.focus();
+        e.preventDefault();
+      }
+    };
+
+    dialog.addEventListener('keydown', handleKeyDown);
+    return () => dialog.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isError]);
 
   const idPrefix = React.useId();
   const titleId = `notification-title-${idPrefix}`;
@@ -104,20 +115,24 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       className="notification-overlay" 
     >
       {isError ? (
-        <div 
+        <div
+          ref={contentRef}
+          tabIndex={-1}
           className="notification-content error-variant"
           role="alertdialog"
-          aria-modal="true" 
+          aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={descId}
         >
           {content}
         </div>
       ) : (
-        <div 
+        <div
+          ref={contentRef}
+          tabIndex={-1}
           className="notification-content"
           role="dialog"
-          aria-modal="true" 
+          aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={descId}
         >

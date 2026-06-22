@@ -6,7 +6,7 @@ import { CameraStream } from './CameraStream';
 import { OnboardingModal } from './OnboardingModal';
 import type { Painting } from '../types/painting';
 
-const IS_DEV_MODE = import.meta.env.VITE_SHOW_CAMERA === 'true'; 
+const IS_DEV_MODE = import.meta.env.DEV;
 
 export const LyriaPlayer: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
@@ -137,8 +137,8 @@ export const LyriaPlayer: React.FC = () => {
 
   const statusMessages: Record<string, string> = {
     idle: "À procura de obra...Aponte a câmara diretamente para uma obra de arte.",
-    focusing: "Obra detetada! Mantenha o dispositivo imóvel para capturar",
-    centered: "Perfeito. A enviar imagem para análise...",
+    focusing: "Quadro à vista. Mantenha o dispositivo imóvel para o capturar.",
+    centered: "A capturar a imagem. Mantenha o dispositivo imóvel.",
     need_center_left: "Aponte a câmara mais para a esquerda, para centrar o quadro.",
     need_center_right: "Aponte a câmara mais para a direita, para centrar o quadro.",
     need_center_up: "Aponte a câmara mais para cima, para centrar o quadro.",
@@ -147,8 +147,14 @@ export const LyriaPlayer: React.FC = () => {
   };
 
   const announce = (text: string, key?: string, force: boolean = false) => {
+    if (settings.screenReaderMode) {
+      setGlobalDucking(false);
+      setIsUiAnnouncing(false);
+      return;
+    }
+
     const now = Date.now();
-    
+
     if (!force && !key && now - lastStatusAnnouncementRef.current < 4000) {
       return;
     }
@@ -220,13 +226,15 @@ export const LyriaPlayer: React.FC = () => {
     if (isPaused || !hasInteracted || !isSearching) return;
 
     if (isProcessing && activePainting) {
-      announce("A analisar a emoção da obra e a compor o som. Pode demorar alguns segundos.", "processing");
+      announce("A analisar obra e a compor paisagem sonora. Pode demorar alguns segundos.", "processing");
     } else if (!isProcessing && activePainting) {
       
     } else if (detectionStatus === 'idle') {
       announce("À procura de um quadro.", "searching_painting");
     } else if (detectionStatus === 'focusing') {
-      announce("Quadro detetado. Por favor, mantenha a câmara parada.", "painting_detected_focus");
+      announce("Quadro à vista. Mantenha o dispositivo imóvel para o capturar.", "painting_detected_focus");
+    } else if (detectionStatus === 'centered') {
+      announce("A capturar a imagem. Mantenha o dispositivo imóvel.", "capturing_image");
     } else if (detectionStatus.startsWith('need_center')) {
       const now = Date.now();
       const isSameStatus = detectionStatus === lastCenteringStatusRef.current;
@@ -455,12 +463,12 @@ export const LyriaPlayer: React.FC = () => {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
             } else if (activePainting.id.toString().startsWith("unknown")) {
               handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível porque a obra é desconhecida e não consta na base de dados.");
+            } else if (!settings.intentionEnabled) {
+              handleActionWithCheck(() => {}, false, "A intenção do autor está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") {
               handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível para esta obra.");
             } else if (failedTasks['tts-intention']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a intenção do autor. Verifique a sua ligação à internet.", "error");
-            } else if (!settings.intentionEnabled) {
-              handleActionWithCheck(() => {}, false, "A intenção do autor está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!authorsIntentionText) {
               handleActionWithCheck(() => {}, false, "A intenção do autor ainda está a ser gerada. Por favor, aguarde.");
             } else {
@@ -473,9 +481,9 @@ export const LyriaPlayer: React.FC = () => {
             isIntentionPlaying ? "A intenção do autor está a ser reproduzida" :
             !activePainting ? "Intenção do Autor não disponível pois nenhuma obra foi detetada" :
             activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para obras desconhecidas" :
+            !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
             (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") ? "A intenção do autor não está disponível para esta obra" :
             failedTasks['tts-intention'] ? "Erro na intenção do autor. Verifique a internet" :
-            !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
             !authorsIntentionText ? "A intenção do autor ainda está a ser gerada" :
             "Tocar Intenção do Autor da obra"
           }

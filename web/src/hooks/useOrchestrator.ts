@@ -46,7 +46,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const authorsIntentionBufferRef = useRef<AudioBuffer | null>(null);
   const sfxBuffersRef = useRef<{ buffer: AudioBuffer; pan: number }[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const activeTtsCountRef = useRef<number>(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const initAudioContext = useCallback(() => {
@@ -339,8 +338,11 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         introBufferPromise = tts.generateSpeechBuffer(introText, signal);
       }
 
+      const completionText = "A paisagem sonora está pronta. Pode ouvir a descrição, a análise e a intenção do autor quando quiser.";
+      const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
+
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt) });
+        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true) });
       }
 
       // 2. TTS Description
@@ -396,19 +398,10 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         try {
           const introBuffer = await introBufferPromise;
           if (introBuffer && !isPaused) {
-            // Wait for system voice/announcements to finish
+            // Wait for system voice/announcements to finish. The music is still
+            // muted at this point, so the intro plays on its own.
             await waitForSystemVoice();
-
-            activeTtsCountRef.current++;
-            try {
-              if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
-              await tts.playAudioBuffer(introBuffer, settings.masterVolume);
-            } finally {
-              activeTtsCountRef.current--;
-              if (activeTtsCountRef.current === 0 && settings.musicEnabled) {
-                lyria.setVolume(settings.masterVolume, 0.8);
-              }
-            }
+            await tts.playAudioBuffer(introBuffer, settings.masterVolume);
           }
         } catch (error) {
           console.error("Intro playback failed:", error);
@@ -418,6 +411,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const results = await Promise.allSettled(generationTasks.map(t => t.promise));
 
       let succeededCount = 0;
+      let lyriaFailed = false;
       results.forEach((result, i) => {
         const { label } = generationTasks[i];
         if (result.status === 'rejected') {
@@ -429,6 +423,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
           if (label === 'lyria') {
+            lyriaFailed = true;
             setCriticalError(
               "Não foi possível conectar ao serviço de música. " +
               "Verifique a sua ligação à internet e reinicie o sistema."
@@ -442,7 +437,26 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       console.log(
         `[Orchestrator] Generation complete. ${succeededCount}/${results.length} tasks succeeded.`
       );
-      
+
+      // Announce that everything is ready, then reveal the soundscape. Skipped
+      // if the run was aborted, paused, or the music service failed.
+      if (!signal.aborted && !isPaused && !lyriaFailed) {
+        try {
+          const completionBuffer = await completionBufferPromise;
+          if (completionBuffer && !signal.aborted && !isPaused) {
+            await waitForSystemVoice();
+            await tts.playAudioBuffer(completionBuffer, settings.masterVolume);
+          }
+        } catch (error) {
+          console.error("Completion announcement failed:", error);
+        }
+
+        // Start the soundscape now that the user has been told it is ready.
+        if (settings.musicEnabled && !signal.aborted && !isPaused) {
+          lyria.setVolume(settings.masterVolume, 1.0);
+        }
+      }
+
     } catch (error) {
       console.error("Orchestration failed:", error);
       lastPaintingId.current = null;
@@ -463,10 +477,17 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     setIsPaused(nextState);
     if (nextState) {
       lyria.pause();
-    } else if (activePainting && settings.musicEnabled) {
-      lyria.resume(settings.masterVolume);
+      tts.pause();
+    } else {
+      tts.resume();
+      if (activePainting && settings.musicEnabled) {
+        const resumeVolume = isNarrationPlayingRef.current
+          ? settings.masterVolume * 0.4
+          : settings.masterVolume;
+        lyria.resume(resumeVolume);
+      }
     }
-  }, [isPaused, lyria, activePainting, settings.musicEnabled, settings.masterVolume]);
+  }, [isPaused, lyria, tts, activePainting, settings.musicEnabled, settings.masterVolume]);
 
   const setGlobalDucking = useCallback((isDucking: boolean) => {
     const vol = isDucking ? settings.masterVolume * 0.2 : settings.masterVolume;

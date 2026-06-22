@@ -6,6 +6,7 @@ export interface Settings {
   sfxEnabled: boolean;
   intentionEnabled: boolean;
   ttsRate: number;
+  screenReaderMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -16,4 +17,5 @@ export const DEFAULT_SETTINGS: Settings = {
   sfxEnabled: true,
   intentionEnabled: true,
   ttsRate: 1.0,
+  screenReaderMode: true,
 };

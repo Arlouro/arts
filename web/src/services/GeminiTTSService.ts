@@ -7,6 +7,15 @@ export class GeminiTTSService {
   private audioContext: AudioContext | null = null;
   private activeNodes: Set<{ source: AudioBufferSourceNode, gainNode: GainNode }> = new Set();
 
+  private currentBuffer: AudioBuffer | null = null;
+  private currentVolume: number = 1.0;
+  private currentSource: AudioBufferSourceNode | null = null;
+  private currentGain: GainNode | null = null;
+  private segmentStartTime: number = 0;   // audioContext.currentTime when the current segment started
+  private playbackOffset: number = 0;     // seconds into the buffer where the current segment began
+  private isPaused: boolean = false;
+  private resolveCurrent: (() => void) | null = null;
+
   constructor() {
   }
 
@@ -57,28 +66,91 @@ export class GeminiTTSService {
 
     this.stopAll(0.3);
 
+    this.currentBuffer = buffer;
+    this.currentVolume = volume;
+    this.playbackOffset = 0;
+    this.isPaused = false;
+
     return new Promise((resolve) => {
-      const source = this.audioContext!.createBufferSource();
-      source.buffer = buffer;
-      
-      const gainNode = this.audioContext!.createGain();
-      const nodeEntry = { source, gainNode };
-      this.activeNodes.add(nodeEntry);
-      
-      const now = this.audioContext!.currentTime;
-      gainNode.gain.setValueAtTime(0, now);
-      
-      source.connect(gainNode);
-      gainNode.connect(this.audioContext!.destination);
-      
-      gainNode.gain.linearRampToValueAtTime(volume, now + 0.3);
-      
-      source.onended = () => {
-        this.activeNodes.delete(nodeEntry);
-        resolve();
-      };
-      source.start(now);
+      this.resolveCurrent = resolve;
+      this.startSegment(0, true);
     });
+  }
+
+  private startSegment(offsetSeconds: number, fadeIn: boolean) {
+    if (!this.audioContext || !this.currentBuffer) return;
+
+    const source = this.audioContext.createBufferSource();
+    source.buffer = this.currentBuffer;
+
+    const gainNode = this.audioContext.createGain();
+    const nodeEntry = { source, gainNode };
+    this.activeNodes.add(nodeEntry);
+
+    this.currentSource = source;
+    this.currentGain = gainNode;
+
+    const now = this.audioContext.currentTime;
+    source.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    if (fadeIn) {
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(this.currentVolume, now + 0.3);
+    } else {
+      gainNode.gain.setValueAtTime(this.currentVolume, now);
+    }
+
+    this.segmentStartTime = now;
+    this.playbackOffset = offsetSeconds;
+
+    source.onended = () => {
+      this.activeNodes.delete(nodeEntry);
+      if (this.isPaused || this.currentSource !== source) return;
+
+      this.currentSource = null;
+      this.currentGain = null;
+      this.currentBuffer = null;
+      const resolve = this.resolveCurrent;
+      this.resolveCurrent = null;
+      resolve?.();
+    };
+
+    source.start(now, offsetSeconds);
+  }
+
+  public pause() {
+    if (!this.audioContext || this.isPaused || !this.currentSource) return;
+
+    this.isPaused = true;
+    const now = this.audioContext.currentTime;
+    this.playbackOffset += now - this.segmentStartTime;
+
+    try {
+      this.currentGain?.gain.cancelScheduledValues(now);
+      this.currentGain?.gain.setValueAtTime(this.currentGain.gain.value, now);
+      this.currentGain?.gain.linearRampToValueAtTime(0, now + 0.1);
+      this.currentSource.stop(now + 0.12);
+    } catch (e) {}
+
+    this.currentSource = null;
+    this.currentGain = null;
+  }
+
+  public resume() {
+    if (!this.audioContext || !this.isPaused || !this.currentBuffer) return;
+
+    this.isPaused = false;
+
+    if (this.playbackOffset >= this.currentBuffer.duration) {
+      this.currentBuffer = null;
+      const resolve = this.resolveCurrent;
+      this.resolveCurrent = null;
+      resolve?.();
+      return;
+    }
+
+    this.startSegment(this.playbackOffset, true);
   }
 
   public setVolume(volume: number, fadeDuration = 0.3) {
@@ -97,7 +169,7 @@ export class GeminiTTSService {
   public stopAll(fadeDuration = 0.3) {
     if (!this.audioContext) return;
     const now = this.audioContext.currentTime;
-    
+
     this.activeNodes.forEach(({ source, gainNode }) => {
       try {
         gainNode.gain.cancelScheduledValues(now);
@@ -107,6 +179,15 @@ export class GeminiTTSService {
       } catch (e) {}
     });
     this.activeNodes.clear();
+
+    this.isPaused = false;
+    this.currentSource = null;
+    this.currentGain = null;
+    this.currentBuffer = null;
+    this.playbackOffset = 0;
+    const resolve = this.resolveCurrent;
+    this.resolveCurrent = null;
+    resolve?.();
   }
 
   async textToSpeech(text: string, signal?: AbortSignal): Promise<void> {

@@ -63,14 +63,15 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
       </div>
 
       <div className="settings-grid">
-        <h2 className="settings-section-title">Filtros</h2>
+        <h3 className="settings-section-title">Filtros</h3>
         
         {/* Filters */}
         <button type="button"
           className={`setting-button ${settings.musicEnabled ? 'active' : 'inactive'}`}
-          aria-pressed={settings.musicEnabled ? "true" : "false"}
+          aria-pressed={settings.musicEnabled}
           onClick={() => onUpdate({ musicEnabled: !settings.musicEnabled })}
           onMouseEnter={() => announce(`${settings.musicEnabled ? 'Desativar' : 'Ativar'} Música`, settings.musicEnabled ? 'disable_music' : 'enable_music')}
+          aria-label={`Música: ${settings.musicEnabled ? 'Ligada. A paisagem sonora musical gerada para a obra é reproduzida.' : 'Desligada. A paisagem sonora musical não é reproduzida.'}`}
         >
           <i className={`fa-regular ${settings.musicEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
           <span>Música: {settings.musicEnabled ? 'Ligada' : 'Desligada'}</span>
@@ -78,9 +79,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
 
         <button type="button"
           className={`setting-button ${settings.descriptionEnabled ? 'active' : 'inactive'}`}
-          aria-pressed={settings.descriptionEnabled ? "true" : "false"}
+          aria-pressed={settings.descriptionEnabled}
           onClick={() => onUpdate({ descriptionEnabled: !settings.descriptionEnabled })}
           onMouseEnter={() => announce(`${settings.descriptionEnabled ? 'Desativar' : 'Ativar'} Áudio-descrição`, settings.descriptionEnabled ? 'disable_description' : 'enable_description')}
+          aria-label={`Áudio-descrição: ${settings.descriptionEnabled ? 'Ligada. Fica disponível uma audio-descrição da obra.' : 'Desligada. A audio-descrição da obra fica indisponível.'}`}
         >
           <i className={`fa-regular ${settings.descriptionEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
           <span>Áudio-descrição: {settings.descriptionEnabled ? 'Ligada' : 'Desligada'}</span>
@@ -88,9 +90,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
 
         <button type="button"
           className={`setting-button ${settings.analysisEnabled ? 'active' : 'inactive'}`}
-          aria-pressed={settings.analysisEnabled ? "true" : "false"}
+          aria-pressed={settings.analysisEnabled}
           onClick={() => onUpdate({ analysisEnabled: !settings.analysisEnabled })}
           onMouseEnter={() => announce(`${settings.analysisEnabled ? 'Desativar' : 'Ativar'} Análise Detalhada`, settings.analysisEnabled ? 'disable_analysis' : 'enable_analysis')}
+          aria-label={`Análise Detalhada: ${settings.analysisEnabled ? 'Ligada. Fica disponível uma análise aprofundada do significado e contexto da obra.' : 'Desligada. A análise aprofundada da obra não fica disponível.'}`}
         >
           <i className={`fa-regular ${settings.analysisEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
           <span>Análise Detalhada: {settings.analysisEnabled ? 'Ligada' : 'Desligada'}</span>
@@ -98,9 +101,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
 
         <button type="button"
           className={`setting-button ${settings.sfxEnabled ? 'active' : 'inactive'}`}
-          aria-pressed={settings.sfxEnabled ? "true" : "false"}
+          aria-pressed={settings.sfxEnabled}
           onClick={() => onUpdate({ sfxEnabled: !settings.sfxEnabled })}
           onMouseEnter={() => announce(`${settings.sfxEnabled ? 'Desativar' : 'Ativar'} Som de objetos identificados`, settings.sfxEnabled ? 'disable_sfx' : 'enable_sfx')}
+          aria-label={`Som de objetos identificados: ${settings.sfxEnabled ? 'Ligado. São reproduzidos efeitos sonoros para os objetos detetados na obra.' : 'Desligado. Não são reproduzidos efeitos sonoros para os objetos da obra.'}`}
         >
           <i className={`fa-regular ${settings.sfxEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
           <span>Som de objetos identificados: {settings.sfxEnabled ? 'Ligado' : 'Desligado'}</span>
@@ -108,12 +112,26 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
 
         <button type="button"
           className={`setting-button ${settings.intentionEnabled ? 'active' : 'inactive'}`}
-          aria-pressed={settings.intentionEnabled ? "true" : "false"}
+          aria-pressed={settings.intentionEnabled}
           onClick={() => onUpdate({ intentionEnabled: !settings.intentionEnabled })}
           onMouseEnter={() => announce(`${settings.intentionEnabled ? 'Desativar' : 'Ativar'} Intenção do Autor`, settings.intentionEnabled ? 'disable_intention' : 'enable_intention')}
+          aria-label={`Intenção do Autor: ${settings.intentionEnabled ? 'Ligada. Fica disponível a leitura da intenção do autor sobre a obra.' : 'Desligada. A intenção do autor não fica disponível.'}`}
         >
           <i className={`fa-regular ${settings.intentionEnabled ? 'fa-square-check' : 'fa-square'}`}></i>
           <span>Intenção do Autor: {settings.intentionEnabled ? 'Ligada' : 'Desligada'}</span>
+        </button>
+
+        <h3 className="settings-section-title">Acessibilidade</h3>
+
+        <button type="button"
+          className={`setting-button ${settings.screenReaderMode ? 'active' : 'inactive'}`}
+          aria-pressed={settings.screenReaderMode}
+          onClick={() => onUpdate({ screenReaderMode: !settings.screenReaderMode })}
+          onMouseEnter={() => announce(`${settings.screenReaderMode ? 'Desativar' : 'Ativar'} Modo leitor de ecrã`, settings.screenReaderMode ? 'disable_screenreader' : 'enable_screenreader')}
+          aria-label={`Modo leitor de ecrã: ${settings.screenReaderMode ? 'Ligado. A narração automática da aplicação está desativada para o seu leitor de ecrã ser a única voz. Desative esta opção apenas se não utilizar um leitor de ecrã.' : 'Desligado. A aplicação anuncia em voz alta. Ative esta opção se utilizar um leitor de ecrã, para evitar duas vozes em simultâneo.'}`}
+        >
+          <i className={`fa-regular ${settings.screenReaderMode ? 'fa-square-check' : 'fa-square'}`}></i>
+          <span>Modo leitor de ecrã: {settings.screenReaderMode ? 'Ligado' : 'Desligado'}</span>
         </button>
       </div>
     </div>

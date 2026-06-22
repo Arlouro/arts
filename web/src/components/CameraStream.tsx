@@ -86,7 +86,7 @@ export const CameraStream: React.FC<CameraStreamProps> = ({ onFrame, isPaused, i
 
   if (!isActive) return null;
 
-  const isDevMode = import.meta.env.VITE_SHOW_CAMERA === 'true';
+  const isDevMode = import.meta.env.DEV;
 
   const devStyle: React.CSSProperties = isDevMode ? {
     opacity: 1,
