@@ -47,7 +47,6 @@ const PAGES: OnboardingPage[] = [
   },
 ];
 
-/** Each page gets its own accent colour for visual differentiation */
 const PAGE_COLORS = ['#2196f3', '#ffeb3b', '#ff9800', '#4caf50'];
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, announce }) => {

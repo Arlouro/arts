@@ -1,7 +1,6 @@
 import type { Painting } from "../types/painting.ts";
 import { withRetry, isRetryableError } from "../utils/retry.ts";
 
-// Fallback to localhost if the environment variable is not set
 const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000"}/api`;
 
 export class GeminiService {

@@ -342,7 +342,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
 
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true) });
+        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config) });
       }
 
       // 2. TTS Description
@@ -438,8 +438,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         `[Orchestrator] Generation complete. ${succeededCount}/${results.length} tasks succeeded.`
       );
 
-      // Announce that everything is ready, then reveal the soundscape. Skipped
-      // if the run was aborted, paused, or the music service failed.
       if (!signal.aborted && !isPaused && !lyriaFailed) {
         try {
           const completionBuffer = await completionBufferPromise;
@@ -451,7 +449,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           console.error("Completion announcement failed:", error);
         }
 
-        // Start the soundscape now that the user has been told it is ready.
         if (settings.musicEnabled && !signal.aborted && !isPaused) {
           lyria.setVolume(settings.masterVolume, 1.0);
         }

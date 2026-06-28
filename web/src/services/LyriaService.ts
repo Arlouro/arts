@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Scale, MusicGenerationMode, type LiveMusicGenerationConfig } from "@google/genai";
 import { decode } from "base64-arraybuffer";
 import type { LyriaMessage, ServiceStatus } from "../types/lyria";
 import { withRetry } from "../utils/retry.ts";
@@ -56,11 +56,13 @@ export class LyriaService {
     }
   }
 
-  public async connect(prompt: string, startMuted: boolean = false) {
+  public async connect(prompt: string, startMuted: boolean = false, rawConfig?: unknown) {
     try {
       this.setStatus('connecting');
       await this.initAudio();
       this.setVolume(startMuted ? 0 : 1.0);
+
+      const musicConfig = this.buildMusicConfig(rawConfig);
 
       await withRetry(
         async () => {
@@ -84,6 +86,11 @@ export class LyriaService {
             weightedPrompts: [{ text: prompt, weight: 1.0 }],
           });
 
+          if (musicConfig) {
+            await this.session.setMusicGenerationConfig({ musicGenerationConfig: musicConfig });
+            console.log("Applied Lyria music config:", musicConfig);
+          }
+
           await this.session.play();
         },
         { maxAttempts: 3, baseDelayMs: 2000, shouldRetry: isLyriaConnectRetriable }
@@ -96,6 +103,68 @@ export class LyriaService {
       this.setStatus('error');
       throw error;
     }
+  }
+  
+  private buildMusicConfig(raw: unknown): LiveMusicGenerationConfig | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const r = raw as Record<string, unknown>;
+
+    const config: LiveMusicGenerationConfig = {};
+
+    const num = (v: unknown): number | undefined => {
+      const n = typeof v === 'string' ? parseFloat(v) : v;
+      return typeof n === 'number' && !isNaN(n) ? n : undefined;
+    };
+    const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+    const bool = (v: unknown): boolean | undefined => {
+      if (typeof v === 'boolean') return v;
+      if (typeof v === 'string') {
+        const s = v.trim().toLowerCase();
+        if (s === 'true') return true;
+        if (s === 'false') return false;
+      }
+      return undefined;
+    };
+
+    const guidance = num(r.Guidance ?? r.guidance);
+    if (guidance !== undefined) config.guidance = clamp(guidance, 0, 6);
+
+    const bpm = num(r.bpm ?? r.BPM);
+    if (bpm !== undefined) config.bpm = clamp(Math.round(bpm), 60, 200);
+
+    const density = num(r.Density ?? r.density);
+    if (density !== undefined) config.density = clamp(density, 0, 1);
+
+    const brightness = num(r.Brightness ?? r.brightness);
+    if (brightness !== undefined) config.brightness = clamp(brightness, 0, 1);
+
+    const scaleRaw = r.Scale ?? r.scale;
+    if (typeof scaleRaw === 'string') {
+      const key = scaleRaw.trim().toUpperCase();
+      if ((Object.values(Scale) as string[]).includes(key) && key !== Scale.SCALE_UNSPECIFIED) {
+        config.scale = key as Scale;
+      }
+    }
+
+    const muteBass = bool(r['Mute-bass'] ?? r.muteBass);
+    if (muteBass !== undefined) config.muteBass = muteBass;
+
+    const muteDrums = bool(r['Mute-drums'] ?? r.muteDrums);
+    if (muteDrums !== undefined) config.muteDrums = muteDrums;
+
+    const onlyBassAndDrums = bool(r['Only-bass-and-drums'] ?? r.onlyBassAndDrums);
+    if (onlyBassAndDrums !== undefined) config.onlyBassAndDrums = onlyBassAndDrums;
+
+    const modeRaw = r['Music-generation-mode'] ?? r.musicGenerationMode;
+    if (typeof modeRaw === 'string') {
+      const key = modeRaw.trim().toUpperCase();
+      if ((Object.values(MusicGenerationMode) as string[]).includes(key) &&
+          key !== MusicGenerationMode.MUSIC_GENERATION_MODE_UNSPECIFIED) {
+        config.musicGenerationMode = key as MusicGenerationMode;
+      }
+    }
+
+    return Object.keys(config).length > 0 ? config : undefined;
   }
 
   private async handleMessage(message: LyriaMessage) {
