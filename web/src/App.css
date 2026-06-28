@@ -182,8 +182,8 @@
   --btn-accent-bg: rgba(33, 150, 243, 0.5);
 }
 .btn-analysis {
-  --btn-accent: var(--success);
-  --btn-accent-bg: rgba(76, 175, 80, 0.5);
+  --btn-accent: var(--purple);
+  --btn-accent-bg: rgba(137, 49, 239, 0.5);
 }
 .btn-settings {
   --btn-accent: var(--text-muted);
