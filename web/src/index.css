@@ -1,13 +1,13 @@
 :root {
   /* Colours */
   --accent: #2196f3;
-  --accent-dark: #1976d2;
-  --success: #4caf50;
-  --danger: #f44336;
+  --accent-dark: #0057E9;
+  --success: #87E911;
+  --danger: #E11845;
   --warning: #ff9800;
-  --yellow: #ffeb3b;
-  --pink: #e91e63;
-  --purple: #9c27b0;
+  --yellow: #F2CA19;
+  --pink: #FF00BD;
+  --purple: #8931EF;
 
   /* Backgrounds */
   --bg: #121212;
