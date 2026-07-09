@@ -6,7 +6,6 @@ import { ElevenLabsService } from '../services/ElevenLabsService.ts';
 import type { Painting } from '../types/painting.ts';
 import { useYolo } from './useYolo.ts';
 import { useSettings } from './useSettings.ts';
-import { buildWeightedPrompts } from '../utils/musicBlend.ts';
 import {
   playEarcon, haptic, HAPTICS,
   startProcessingBed, stopProcessingBed,
@@ -339,10 +338,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       });
 
       const musicPrompt = analysis.MusicPrompt?.Prompt || "";
-      const musicLayers = analysis.MusicPrompt?.Layers || [];
 
-      const weightedPrompts = buildWeightedPrompts(musicPrompt, musicLayers);
-      console.log("Lyria weighted prompts:", weightedPrompts);
+      console.log("Lyria prompt:", musicPrompt);
 
       const desc = analysis.ArtDescription || "";
       const anal = analysis.ArtAnalysis || "";
@@ -374,7 +371,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
 
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push({ label: 'lyria', promise: lyria.connect(weightedPrompts, true, analysis.MusicPrompt?.Config) });
+        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config) });
       }
 
       // 2. TTS Description

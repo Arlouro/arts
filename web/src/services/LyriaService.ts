@@ -56,13 +56,14 @@ export class LyriaService {
     }
   }
 
-  public async connect(weightedPrompts: { text: string; weight: number }[], startMuted: boolean = false, rawConfig?: unknown) {
+  public async connect(prompt: string, startMuted: boolean = false, rawConfig?: unknown) {
     try {
       this.setStatus('connecting');
       await this.initAudio();
       this.setVolume(startMuted ? 0 : 1.0);
 
       const musicConfig = this.buildMusicConfig(rawConfig);
+      const weightedPrompts = [{ text: prompt || "calm ambient soundscape", weight: 1.0 }];
 
       await withRetry(
         async () => {

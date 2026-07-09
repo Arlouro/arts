@@ -77,8 +77,8 @@ app.post("/api/analyze", async (req, res) => {
       - **Intenção do Autor:** ${authors_intention}`}
 
       ### TASKS:
-      1. Conduct an analysis of the visual elements ${isUnknown ? "purely from the image" : "integrated with the provided historical context"}.
-      2. Generate a "Soundscape Profile" and Prompt for the Lyria AI generator.
+      1. Conduct an analysis of the visual elements ${isUnknown ? "purely from the image" : "integrated with the provided historical context and the author's intention (if available)"}.
+      2. Generate a "Soundscape Profile" and a single unified Prompt for the Lyria AI music generator that captures all detected emotions.
       3. Generate recognizable SFX prompts for specific detected objects.
 
       ### OUTPUT REQUIREMENTS:
@@ -88,7 +88,7 @@ app.post("/api/analyze", async (req, res) => {
       - **Detected Objects Rules:** List of the most relevantly detected objects in the painting (up to 5 objects). Do not force 5 objects; only include objects that are significant to the composition or atmosphere. Can be as few as 1 or 2 if the painting is simple. Order by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance).
       - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
       - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
-      - **Music Layers Rules:** Provide exactly one Layer per detected emotion, in the same order as DetectedEmotions. Each Texture must be specific to THIS painting's visual qualities, never reuse a generic phrasing, so that two different paintings sharing the same emotion yield clearly different textures.
+      - **Music Prompt Rules:** The prompt must be a single, unified descriptive paragraph that weaves together ALL detected emotions, the selected instruments, genre, mood, and, when available, the author's stated intention for the artwork. The author's intention should influence the emotional tone, instrument choices, and overall character of the music.
       - **Audio Description Rules:** Write for a Blind or Low Vision audience. Use a clear spatial logic (e.g., foreground to background, or left to right) to help the user construct a mental map. 
       
       ### JSON SCHEMA & KEYS:
@@ -100,7 +100,7 @@ app.post("/api/analyze", async (req, res) => {
           "Instruments": "Lista de instrumentos baseada na textura visual.",
           "MusicGenre": "Género musical que reflete a época e o sentimento.",
           "Mood": "Atmosfera emocional.",
-          "Prompt": "Detailed descriptive paragraph for music generation using detected emotions and selected instruments, genre and mood. (MUST BE IN ENGLISH)",
+          "Prompt": "Detailed descriptive paragraph for music generation. Must weave together ALL detected emotions, selected instruments, genre, mood, and (when available) the author's stated intention into one cohesive musical direction. (MUST BE IN ENGLISH)",
           "Config": {
             "Guidance": "How closely the music should follow the prompt (0.0-6.0).",
             "bpm": "Suggested tempo in beats per minute. (60-200)",
@@ -111,14 +111,7 @@ app.post("/api/analyze", async (req, res) => {
             "Mute-drums": "Whether to mute the drum/percussion instruments (True/False).",
             "Only-bass-and-drums": "Whether to include only bass and drum/percussion instruments (True/False).",
             "Music-generation-mode": "Indicates to the model if it should focus on QUALITY (default value) or DIVERSITY of music. It can also be set to VOCALIZATION to let the model generate vocalizations as another instrument."
-          },
-          "Layers": [
-            {
-              "Emotion": "One of the DetectedEmotions this layer expresses.",
-              "Texture": "Short, evocative musical texture describing how THIS specific painting expresses this emotion. Name concrete instruments, articulation, register and movement. (MUST BE IN ENGLISH)",
-              "Intensity": "How strongly this emotion is present in the painting, from 0.0 to 1.0."
-            }
-          ]
+          }
         },
         "DetectedObjects": [
           {
