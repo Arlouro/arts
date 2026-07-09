@@ -1,7 +1,7 @@
 from ultralytics import YOLO
 import os
 import time
-from identification import identify_painting
+from identification import PaintingIndex
 import socketio
 import shutil
 import base64
@@ -14,9 +14,9 @@ RELAY_URL = os.environ.get('RELAY_SERVER_URL', 'http://localhost:8000')
 latest_frame = None
 
 EMA_ALPHA     = 0.4
-DWELL_SECONDS = 0.7   # steady hold once fully in frame (centering is soft guidance only)
-CENTER_ZONE   = 0.08  # used for tracking beacon feedback, not a capture gate
-BORDER_MARGIN = 0.06  # keep the whole painting away from the frame edge (no cut-off)
+DWELL_SECONDS = 0.7  
+CENTER_ZONE   = 0.08 
+BORDER_MARGIN = 0.06 
 START_DELAY   = 0.5
 
 ema_positions      = {}  
@@ -64,7 +64,9 @@ detection_start_times = {}
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-print("Waiting for frames from frontend...")
+# Build the SIFT feature index once at startup (not per-capture).
+painting_index = PaintingIndex(paintings_json)
+print("Painting identification index ready.")
 
 while True:
     if latest_frame is None:
@@ -242,7 +244,7 @@ while True:
         r[i].save_crop(save_dir=id_save_path)
 
         if os.path.exists(captured_image_path):
-            painting_info = identify_painting(captured_image_path, paintings_json)
+            painting_info = painting_index.identify(captured_image_path)
 
             if painting_info:
                 sio.emit('painting_detected', {

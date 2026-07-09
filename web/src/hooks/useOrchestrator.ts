@@ -327,6 +327,20 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
       lyria.stop();
 
+      // Kick off intro + completion TTS immediately — they only need painting
+      // metadata, not the Gemini analysis, so they run in parallel with it.
+      let introBufferPromise: Promise<AudioBuffer | null> | null = null;
+      if ((settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) && !isPaused) {
+        const isUnknown = painting.id.toString().startsWith("unknown");
+        const introText = isUnknown 
+          ? "Obra desconhecida." 
+          : `${painting.title}. ${painting.artist && painting.artist !== "Desconhecido" ? `Por ${painting.artist}.` : ""} ${painting.year && painting.year !== "Desconhecido" ? `Ano, ${painting.year}.` : ""}`;
+        introBufferPromise = tts.generateSpeechBuffer(introText, signal);
+      }
+
+      const completionText = "A paisagem sonora está pronta.";
+      const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
+
       const analysis = await gemini.analyzePainting(painting, signal);
       if (signal.aborted) return;
 
@@ -358,18 +372,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const generationTasks: Array<{ label: string; promise: Promise<any> }> = [];
 
       // 1. Music (Lyria)
-      let introBufferPromise: Promise<AudioBuffer | null> | null = null;
-      if ((settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) && !isPaused) {
-        const isUnknown = painting.id.toString().startsWith("unknown");
-        const introText = isUnknown 
-          ? "Obra desconhecida." 
-          : `${painting.title}. ${painting.artist && painting.artist !== "Desconhecido" ? `Por ${painting.artist}.` : ""} ${painting.year && painting.year !== "Desconhecido" ? `Ano, ${painting.year}.` : ""}`;
-        introBufferPromise = tts.generateSpeechBuffer(introText, signal);
-      }
-
-      const completionText = "A paisagem sonora está pronta.";
-      const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
-
       if (!isPaused && settings.musicEnabled) {
         generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config) });
       }
