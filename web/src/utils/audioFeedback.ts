@@ -69,46 +69,55 @@ export function haptic(pattern: number | readonly number[]): void {
 }
 
 
-let bedNodes: { osc: OscillatorNode; gain: GainNode }[] = [];
-let bedCtx: AudioContext | null = null;
+let waitingAudio: HTMLAudioElement | null = null;
+let fadeInterval: number | null = null;
 
 export function startProcessingBed(volume = 1): void {
-  const ctx = getCtx();
-  if (!ctx || ctx.state !== "running") return;
-  stopProcessingBed(0);
-  bedCtx = ctx;
-  const now = ctx.currentTime;
-  const peak = 0.05 * clamp(volume, 0, 1);
-  const freqs = [110, 164.81, 220]; 
-  bedNodes = freqs.map((f, i) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = i === 1 ? f * 1.003 : f;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(peak, now + 1.6);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    return { osc, gain };
-  });
+  if (fadeInterval) {
+    window.clearInterval(fadeInterval);
+    fadeInterval = null;
+  }
+  if (!waitingAudio) {
+    waitingAudio = new Audio('/assets/audio/ui/generation_waiting_music.mp3');
+    waitingAudio.loop = true;
+  }
+  waitingAudio.volume = clamp(volume * 0.25, 0, 1);
+  waitingAudio.play().catch(() => {});
 }
 
 export function stopProcessingBed(fade = 1.0): void {
-  const ctx = bedCtx;
-  const nodes = bedNodes;
-  bedNodes = [];
-  bedCtx = null;
-  if (!ctx) return;
-  const now = ctx.currentTime;
-  nodes.forEach(({ osc, gain }) => {
-    try {
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setValueAtTime(gain.gain.value, now);
-      gain.gain.linearRampToValueAtTime(0, now + fade);
-      osc.stop(now + fade + 0.05);
-    } catch { /* already stopped */ }
-  });
+  if (!waitingAudio) return;
+  if (fadeInterval) {
+    window.clearInterval(fadeInterval);
+    fadeInterval = null;
+  }
+  
+  if (fade <= 0) {
+    waitingAudio.pause();
+    waitingAudio.currentTime = 0;
+    return;
+  }
+  
+  const steps = 20;
+  const stepTime = (fade * 1000) / steps;
+  const initialVol = waitingAudio.volume;
+  let currentStep = 0;
+  
+  fadeInterval = window.setInterval(() => {
+    currentStep++;
+    if (!waitingAudio) {
+      window.clearInterval(fadeInterval!);
+      return;
+    }
+    const nextVol = initialVol * (1 - currentStep / steps);
+    waitingAudio.volume = Math.max(0, nextVol);
+    if (currentStep >= steps) {
+      waitingAudio.pause();
+      waitingAudio.currentTime = 0;
+      window.clearInterval(fadeInterval!);
+      fadeInterval = null;
+    }
+  }, stepTime);
 }
 
 
