@@ -133,6 +133,31 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
           <i className={`fa-regular ${settings.screenReaderMode ? 'fa-square-check' : 'fa-square'}`}></i>
           <span>Modo leitor de ecrã: {settings.screenReaderMode ? 'Ligado' : 'Desligado'}</span>
         </button>
+
+        <h3 className="settings-section-title">Assistência e feedback</h3>
+
+        {([
+          { key: 'centeringBeaconEnabled', label: 'Guia sonoro de enquadramento', on: 'Ligado. Um som contínuo ajuda a apontar e a centrar a obra.', off: 'Desligado. A orientação é apenas por voz.' },
+          { key: 'earconsEnabled', label: 'Sons de estado', on: 'Ligados. Pequenos sons assinalam deteção, captura e conclusão.', off: 'Desligados.' },
+          { key: 'hapticsEnabled', label: 'Vibração', on: 'Ligada. O dispositivo vibra nos momentos-chave.', off: 'Desligada.' },
+          { key: 'processingBedEnabled', label: 'Som de espera', on: 'Ligado. Um som ambiente suave preenche o tempo de geração.', off: 'Desligado.' },
+          { key: 'autoNarrate', label: 'Narração automática', on: 'Ligada. A áudio-descrição e a análise são lidas automaticamente.', off: 'Desligada. Escolhe o que ouvir através dos botões.' },
+        ] as const).map((t) => {
+          const active = settings[t.key];
+          return (
+            <button type="button"
+              key={t.key}
+              className={`setting-button ${active ? 'active' : 'inactive'}`}
+              aria-pressed={settings[t.key]}
+              onClick={() => onUpdate({ [t.key]: !active } as Partial<Settings>)}
+              onMouseEnter={() => announce(`${active ? 'Desativar' : 'Ativar'} ${t.label}`)}
+              aria-label={`${t.label}: ${active ? t.on : t.off}`}
+            >
+              <i className={`fa-regular ${active ? 'fa-square-check' : 'fa-square'}`}></i>
+              <span>{t.label}: {active ? 'Ligado' : 'Desligado'}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

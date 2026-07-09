@@ -15,7 +15,7 @@ export const useLyria = (apiKey: string) => {
   }, [apiKey]);
 
   const generateMusic = (prompt: string) => {
-    serviceRef.current?.connect(prompt);
+    serviceRef.current?.connect([{ text: prompt, weight: 1.0 }]);
   };
 
   const stopMusic = () => {

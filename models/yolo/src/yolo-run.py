@@ -13,11 +13,11 @@ RELAY_URL = os.environ.get('RELAY_SERVER_URL', 'http://localhost:8000')
 
 latest_frame = None
 
-EMA_ALPHA     = 0.4   
-DWELL_SECONDS = 1     
-CENTER_ZONE   = 0.08  
-BORDER_MARGIN = 0.05  
-START_DELAY   = 0.5     
+EMA_ALPHA     = 0.4
+DWELL_SECONDS = 0.7   # steady hold once fully in frame (centering is soft guidance only)
+CENTER_ZONE   = 0.08  # used for tracking beacon feedback, not a capture gate
+BORDER_MARGIN = 0.06  # keep the whole painting away from the frame edge (no cut-off)
+START_DELAY   = 0.5
 
 ema_positions      = {}  
 dwell_start_times  = {}
@@ -170,13 +170,17 @@ while True:
         continue
 
     # ── CANDIDATE SELECTION ──────────────────────────────────────────
+    # Composite score: prefer centred paintings, with a confidence bonus.
+    def ranking_score(c):
+        return c['dist_from_center'] - 0.3 * c['conf']
+
     fully_in_frame = [c for c in candidates if c['in_frame']]
 
     if fully_in_frame:
-        active      = min(fully_in_frame, key=lambda c: c['dist_from_center'])
+        active      = min(fully_in_frame, key=ranking_score)
         can_capture = True
     else:
-        active      = min(candidates, key=lambda c: c['dist_from_center'])
+        active      = min(candidates, key=ranking_score)
         can_capture = False
 
     # ── PROCESSING ───────────────────────────────────────────────────
@@ -185,6 +189,20 @@ while True:
     ema_x  = active['ema_x']
     ema_y  = active['ema_y']
     conf   = active['conf']
+
+    # ── Continuous framing feedback (client-side "centering beacon") ──
+    beacon_centered = (
+        can_capture
+        and abs(ema_x - 0.5) < CENTER_ZONE
+        and abs(ema_y - 0.5) < CENTER_ZONE
+        and conf > 0.85
+    )
+    sio.emit('tracking_update', {
+        'dx': round(ema_x - 0.5, 3),
+        'dy': round(ema_y - 0.5, 3),
+        'inFrame': bool(can_capture),
+        'centered': bool(beacon_centered),
+    })
 
     if not can_capture:
         violations = {
@@ -202,68 +220,53 @@ while True:
 
         continue
 
-    # ── Centering + dwell logic ───────────────────────────────────────────────
-    is_centered = (
-        abs(ema_x - 0.5) < CENTER_ZONE and
-        abs(ema_y - 0.5) < CENTER_ZONE and
-        conf > 0.85
-    )
+    # ── In-frame dwell logic (centering is guidance only, not a gate) ─────
+    # The painting is confirmed fully in-frame (border-margin passed).
+    # Start / continue the dwell timer — centering is NOT required.
+    if obj_id not in dwell_start_times:
+        dwell_start_times[obj_id] = current_time
+        sio.emit('status_update', {'status': 'centered'})
 
-    if is_centered:
-        if obj_id not in dwell_start_times:
-            dwell_start_times[obj_id] = current_time
-            sio.emit('status_update', {'status': 'centered'})
+    dwell_elapsed = current_time - dwell_start_times[obj_id]
 
-        dwell_elapsed = current_time - dwell_start_times[obj_id]
+    if dwell_elapsed >= DWELL_SECONDS:
+        print(f"ID {obj_id} stable for {dwell_elapsed:.1f}s. Committing capture.")
 
-        if dwell_elapsed >= DWELL_SECONDS:
-            print(f"ID {obj_id} stable for {dwell_elapsed:.1f}s. Committing capture.")
+        id_save_path = os.path.join(save_path, str(obj_id))
+        if os.path.exists(id_save_path):
+            shutil.rmtree(id_save_path, ignore_errors=True)
 
-            id_save_path = os.path.join(save_path, str(obj_id))
-            if os.path.exists(id_save_path):
-                shutil.rmtree(id_save_path, ignore_errors=True)
+        os.makedirs(os.path.join(id_save_path, 'painting'), exist_ok=True)
+        captured_image_path = os.path.join(id_save_path, 'painting', 'im.jpg')
 
-            os.makedirs(os.path.join(id_save_path, 'painting'), exist_ok=True)
-            captured_image_path = os.path.join(id_save_path, 'painting', 'im.jpg')
+        r[i].save_crop(save_dir=id_save_path)
 
-            r[i].save_crop(save_dir=id_save_path)
+        if os.path.exists(captured_image_path):
+            painting_info = identify_painting(captured_image_path, paintings_json)
 
-            if os.path.exists(captured_image_path):
-                painting_info = identify_painting(captured_image_path, paintings_json)
-
-                if painting_info:
+            if painting_info:
+                sio.emit('painting_detected', {
+                    'id': painting_info.get('$id')
+                })
+                print(f"Sent ID: {painting_info.get('$id')} ({painting_info.get('title')})")
+            else:
+                print(f"ID {obj_id} not matched in database. Sending image for analysis.")
+                with open(captured_image_path, "rb") as img_file:
+                    b64_string = base64.b64encode(img_file.read()).decode('utf-8')
                     sio.emit('painting_detected', {
-                        'id': painting_info.get('$id')
+                        'id': f'unknown_{obj_id}',
+                        'imageData': f"data:image/jpeg;base64,{b64_string}"
                     })
-                    print(f"Sent ID: {painting_info.get('$id')} ({painting_info.get('title')})")
-                else:
-                    print(f"ID {obj_id} not matched in database. Sending image for analysis.")
-                    with open(captured_image_path, "rb") as img_file:
-                        b64_string = base64.b64encode(img_file.read()).decode('utf-8')
-                        sio.emit('painting_detected', {
-                            'id': f'unknown_{obj_id}',
-                            'imageData': f"data:image/jpeg;base64,{b64_string}"
-                        })
 
-            saved_ids.add(obj_id)
-            detection_start_times.pop(obj_id, None)
-            dwell_start_times.pop(obj_id, None)
-
-    else:
+        saved_ids.add(obj_id)
+        detection_start_times.pop(obj_id, None)
         dwell_start_times.pop(obj_id, None)
 
-        print(f"ID {obj_id} is not centred. Guiding user.")
-        x_offset = ema_x - 0.5
-        y_offset = ema_y - 0.5
-
-        if abs(x_offset) > abs(y_offset):
-            sio.emit('status_update', {
-                'status': 'need_center_left' if x_offset < -0.05 else 'need_center_right'
-            })
-        else:
-            sio.emit('status_update', {
-                'status': 'need_center_up' if y_offset < -0.05 else 'need_center_down'
-            })
+    # ── Clean up dwell timers for paintings that left the frame ───────
+    active_in_frame_ids = {c['obj_id'] for c in candidates if c['in_frame']}
+    for tracked_id in list(dwell_start_times.keys()):
+        if tracked_id not in active_in_frame_ids:
+            dwell_start_times.pop(tracked_id, None)
 
     if len(saved_ids) >= 50:
         saved_ids.clear()

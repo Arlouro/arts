@@ -56,7 +56,7 @@ export class LyriaService {
     }
   }
 
-  public async connect(prompt: string, startMuted: boolean = false, rawConfig?: unknown) {
+  public async connect(weightedPrompts: { text: string; weight: number }[], startMuted: boolean = false, rawConfig?: unknown) {
     try {
       this.setStatus('connecting');
       await this.initAudio();
@@ -82,9 +82,7 @@ export class LyriaService {
               onclose: () => this.stop(),
             },
           });
-          await this.session.setWeightedPrompts({
-            weightedPrompts: [{ text: prompt, weight: 1.0 }],
-          });
+          await this.session.setWeightedPrompts({ weightedPrompts });
 
           if (musicConfig) {
             await this.session.setMusicGenerationConfig({ musicGenerationConfig: musicConfig });

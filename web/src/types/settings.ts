@@ -7,6 +7,11 @@ export interface Settings {
   intentionEnabled: boolean;
   ttsRate: number;
   screenReaderMode: boolean;
+  earconsEnabled: boolean;
+  hapticsEnabled: boolean;
+  centeringBeaconEnabled: boolean;
+  processingBedEnabled: boolean;
+  autoNarrate: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,4 +23,9 @@ export const DEFAULT_SETTINGS: Settings = {
   intentionEnabled: true,
   ttsRate: 1.0,
   screenReaderMode: true,
+  earconsEnabled: true,
+  hapticsEnabled: true,
+  centeringBeaconEnabled: true,
+  processingBedEnabled: true,
+  autoNarrate: false,
 };

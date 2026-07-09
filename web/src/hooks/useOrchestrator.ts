@@ -6,6 +6,12 @@ import { ElevenLabsService } from '../services/ElevenLabsService.ts';
 import type { Painting } from '../types/painting.ts';
 import { useYolo } from './useYolo.ts';
 import { useSettings } from './useSettings.ts';
+import { buildWeightedPrompts } from '../utils/musicBlend.ts';
+import {
+  playEarcon, haptic, HAPTICS,
+  startProcessingBed, stopProcessingBed,
+  beaconUpdate, beaconStop,
+} from '../utils/audioFeedback.ts';
 
 export const useOrchestrator = (apiKey: string, isSearching: boolean = false) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -110,6 +116,21 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
+
+  // Centering beacon: active only while the user is framing an artwork.
+  const framingRef = useRef(false);
+  useEffect(() => {
+    framingRef.current = isSearching && !isProcessing && !activePainting && !isPaused;
+    if (!framingRef.current) beaconStop();
+  }, [isSearching, isProcessing, activePainting, isPaused]);
+
+  const handleTracking = useCallback((t: { dx: number; dy: number; centered: boolean; inFrame: boolean }) => {
+    if (!settingsRef.current.centeringBeaconEnabled || !framingRef.current) {
+      beaconStop();
+      return;
+    }
+    beaconUpdate(t.dx, t.dy, t.centered, settingsRef.current.masterVolume);
+  }, []);
 
   const sfxTimeoutsRef = useRef<Set<number>>(new Set());
   const isSfxActiveRef = useRef(false);
@@ -296,6 +317,13 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       sfxBuffersRef.current = [];
       sfxPhase1DoneRef.current = false;
 
+      // Capture earcon + a soft ambient bed so the generation wait isn't silent.
+      const fb = settingsRef.current;
+      if (fb.earconsEnabled) playEarcon('capturing', fb.masterVolume);
+      if (fb.hapticsEnabled) haptic(HAPTICS.capture);
+      beaconStop();
+      if (fb.processingBedEnabled && fb.musicEnabled) startProcessingBed(fb.masterVolume);
+
       console.log(`Starting parallel analysis and generation for: ${painting.title}`);
 
       lyria.stop();
@@ -311,6 +339,10 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       });
 
       const musicPrompt = analysis.MusicPrompt?.Prompt || "";
+      const musicLayers = analysis.MusicPrompt?.Layers || [];
+
+      const weightedPrompts = buildWeightedPrompts(musicPrompt, musicLayers);
+      console.log("Lyria weighted prompts:", weightedPrompts);
 
       const desc = analysis.ArtDescription || "";
       const anal = analysis.ArtAnalysis || "";
@@ -338,11 +370,11 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         introBufferPromise = tts.generateSpeechBuffer(introText, signal);
       }
 
-      const completionText = "A paisagem sonora está pronta. Pode ouvir a descrição, a análise e a intenção do autor quando quiser.";
+      const completionText = "A paisagem sonora está pronta.";
       const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
 
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config) });
+        generationTasks.push({ label: 'lyria', promise: lyria.connect(weightedPrompts, true, analysis.MusicPrompt?.Config) });
       }
 
       // 2. TTS Description
@@ -439,6 +471,11 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       );
 
       if (!signal.aborted && !isPaused && !lyriaFailed) {
+        // Ready cue (non-speech) + haptic, then stop the ambient bed.
+        if (settingsRef.current.earconsEnabled) playEarcon('ready', settings.masterVolume);
+        if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
+        stopProcessingBed(1.2);
+
         try {
           const completionBuffer = await completionBufferPromise;
           if (completionBuffer && !signal.aborted && !isPaused) {
@@ -452,6 +489,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         if (settings.musicEnabled && !signal.aborted && !isPaused) {
           lyria.setVolume(settings.masterVolume, 1.0);
         }
+      } else {
+        stopProcessingBed(0.4);
       }
 
     } catch (error) {
@@ -466,7 +505,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     }
   }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, waitForSystemVoice]);
 
-  const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus);
+  const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus, handleTracking);
   emitRef.current = emit;
 
   const togglePause = useCallback(async () => {
@@ -526,6 +565,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         abortControllerRef.current = null;
       }
       emitRef.current?.(resumeDetection ? "resume_detection" : "pause_detection", {});
+      beaconStop();
+      stopProcessingBed(0.3);
       await lyria.stop();
       tts.stopAll();
       stopSfxLoop();

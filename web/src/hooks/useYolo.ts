@@ -3,11 +3,22 @@ import { io, Socket } from "socket.io-client";
 import type { Painting } from "../types/painting.ts";
 import paintingsData from "../../public/assets/json/paintings.json";
 
+export interface TrackingUpdate {
+  dx: number;       // horizontal offset from centre
+  dy: number;       // vertical offset from centre
+  inFrame: boolean; // whole artwork is within the frame
+  centered: boolean;
+}
+
 export const useYolo = (
   onDetection: (data: Painting) => void,
-  onStatus?: (status: string) => void
+  onStatus?: (status: string) => void,
+  onTracking?: (data: TrackingUpdate) => void
 ) => {
   const socketRef = useRef<Socket | null>(null);
+
+  const onTrackingRef = useRef(onTracking);
+  onTrackingRef.current = onTracking;
 
   const emit = useCallback((event: string, data: any) => {
     socketRef.current?.emit(event, data);
@@ -29,6 +40,10 @@ export const useYolo = (
     socket.on("status_update", (data: { status: string }) => {
       console.log("Status update received:", data.status);
       onStatus?.(data.status);
+    });
+
+    socket.on("tracking_update", (data: TrackingUpdate) => {
+      onTrackingRef.current?.(data);
     });
 
     socket.on("painting_detected", (data: { id: string | number, imageData?: string }) => {

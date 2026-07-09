@@ -4,6 +4,7 @@ import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
 import { CameraStream } from './CameraStream';
 import { OnboardingModal } from './OnboardingModal';
+import { playEarcon, haptic, HAPTICS } from '../utils/audioFeedback';
 import type { Painting } from '../types/painting';
 
 const IS_DEV_MODE = import.meta.env.DEV;
@@ -139,10 +140,10 @@ export const LyriaPlayer: React.FC = () => {
     idle: "À procura de obra...Aponte a câmara diretamente para uma obra de arte.",
     focusing: "Quadro à vista. Mantenha o dispositivo imóvel para o capturar.",
     centered: "A capturar a imagem. Mantenha o dispositivo imóvel.",
-    need_center_left: "Aponte a câmara mais para a esquerda, para centrar o quadro.",
-    need_center_right: "Aponte a câmara mais para a direita, para centrar o quadro.",
-    need_center_up: "Aponte a câmara mais para cima, para centrar o quadro.",
-    need_center_down: "Aponte a câmara mais para baixo, para centrar o quadro.",
+    out_of_frame_left: "O quadro está cortado pela margem esquerda. Mova a câmara para a esquerda.",
+    out_of_frame_right: "O quadro está cortado pela margem direita. Mova a câmara para a direita.",
+    out_of_frame_top: "O quadro está cortado pela margem superior. Mova a câmara para cima.",
+    out_of_frame_bottom: "O quadro está cortado pela margem inferior. Mova a câmara para baixo.",
     processing: "A analisar o contexto emocional da obra..."
   };
 
@@ -235,18 +236,51 @@ export const LyriaPlayer: React.FC = () => {
       announce("Quadro à vista. Mantenha o dispositivo imóvel para o capturar.", "painting_detected_focus");
     } else if (detectionStatus === 'centered') {
       announce("A capturar a imagem. Mantenha o dispositivo imóvel.", "capturing_image");
-    } else if (detectionStatus.startsWith('need_center')) {
+    } else if (detectionStatus.startsWith('out_of_frame')) {
       const now = Date.now();
       const isSameStatus = detectionStatus === lastCenteringStatusRef.current;
       const cooldown = isSameStatus ? 8000 : 4000;
       
       if (now - lastCenteringAnnouncementRef.current >= cooldown) {
-        announce(statusMessages[detectionStatus] || statusMessages['need_center'], undefined, true);
+        announce(statusMessages[detectionStatus] || "O quadro está cortado. Afaste-se um pouco.", undefined, true);
         lastCenteringAnnouncementRef.current = now;
         lastCenteringStatusRef.current = detectionStatus;
       }
     }
   }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted, isSearching]);
+
+  const prevStatusRef = useRef<string>('');
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    if (detectionStatus !== prev) {
+      if (detectionStatus === 'focusing') {
+        if (settings.earconsEnabled) playEarcon('detected', settings.masterVolume);
+        if (settings.hapticsEnabled) haptic(HAPTICS.detected);
+      } else if (detectionStatus === 'centered') {
+        if (settings.hapticsEnabled) haptic(HAPTICS.centered);
+      }
+      prevStatusRef.current = detectionStatus;
+    }
+  }, [detectionStatus, settings.earconsEnabled, settings.hapticsEnabled, settings.masterVolume]);
+
+  useEffect(() => {
+    if (criticalError) {
+      if (settings.earconsEnabled) playEarcon('error', settings.masterVolume);
+      if (settings.hapticsEnabled) haptic(HAPTICS.error);
+    }
+  }, [criticalError, settings.earconsEnabled, settings.hapticsEnabled, settings.masterVolume]);
+
+  const autoNarratedRef = useRef<string | number | null>(null);
+  useEffect(() => {
+    if (!settings.autoNarrate || isProcessing || isPaused || !activePainting) return;
+    if (autoNarratedRef.current === activePainting.id) return;
+    autoNarratedRef.current = activePainting.id;
+    (async () => {
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      if (settings.descriptionEnabled) await playDescription();
+      if (settings.analysisEnabled) await playAnalysis();
+    })();
+  }, [settings.autoNarrate, isProcessing, isPaused, activePainting?.id, settings.descriptionEnabled, settings.analysisEnabled, playDescription, playAnalysis]);
 
   const currentStatus = !isSearching
     ? "Câmara em pausa. Prima o botão de 'Procurar quadro' para recomeçar a procura."
