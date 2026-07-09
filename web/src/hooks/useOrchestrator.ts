@@ -557,6 +557,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     criticalError,
     failedTasks,
     initAudioContext,
+    stopTts: () => tts.stopAll(),
     clearCriticalError: () => setCriticalError(null),
     stopAll: async (resumeDetection: boolean = true) => {
       if (abortControllerRef.current) {

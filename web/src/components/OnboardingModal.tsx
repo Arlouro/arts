@@ -33,9 +33,9 @@ const PAGES: OnboardingPage[] = [
     icon: 'fa-solid fa-wand-magic-sparkles',
     title: 'Aguarde a Criação',
     description:
-      'O sistema analisa o contexto emocional da obra e compõe uma paisagem sonora única.',
+      'O sistema analisa a obra e utiliza a intenção do autor para compor uma paisagem sonora.',
     detail:
-      'Este processo demora alguns segundos — aguarde enquanto a paisagem sonora é gerada.',
+      'Este processo demora alguns segundos. Aguarde enquanto a paisagem sonora é gerada.',
   },
   {
     icon: 'fa-solid fa-headphones',
@@ -43,11 +43,16 @@ const PAGES: OnboardingPage[] = [
     description:
       'Ouça a paisagem sonora e explore as diferentes camadas de informação sobre a obra.',
     detail:
-      'Áudio-descrição, análise detalhada e intenção do autor — tudo ao toque de um botão.',
+      'Áudio-descrição, análise detalhada e intenção do autor, tudo ao toque de um botão.',
   },
 ];
 
-const PAGE_COLORS = ['#2196f3', '#ffeb3b', '#ff9800', '#4caf50'];
+const PAGE_COLORS = [
+  'var(--accent)',
+  'var(--yellow)',
+  'var(--warning)',
+  'var(--success)'
+];
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, announce }) => {
   const [currentPage, setCurrentPage] = useState(0);

@@ -36,6 +36,7 @@ export const LyriaPlayer: React.FC = () => {
     criticalError,
     failedTasks,
     stopAll,
+    stopTts,
     initAudioContext
   } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, isSearching);
 
@@ -424,7 +425,11 @@ export const LyriaPlayer: React.FC = () => {
         <button type="button"
           className="big-button btn-description"
           onClick={(e) => {
-            if (isDescriptionPlaying || isOverlayActive) { e.preventDefault(); return; }
+            if (isOverlayActive) { e.preventDefault(); return; }
+            if (isDescriptionPlaying) {
+              stopTts();
+              return;
+            }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a áudio-descrição: nenhuma obra foi identificada.");
             } else if (failedTasks['tts-description']) {
@@ -438,9 +443,9 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description", true)}
-          aria-disabled={isDescriptionPlaying || isOverlayActive}
+          aria-disabled={isOverlayActive}
           aria-label={
-            isDescriptionPlaying ? "A áudio-descrição está a ser reproduzida" :
+            isDescriptionPlaying ? "Parar áudio-descrição" :
             !activePainting ? "Áudio-descrição não disponível pois nenhuma obra foi detetada" :
             failedTasks['tts-description'] ? "Erro na áudio-descrição. Verifique a internet" :
             !settings.descriptionEnabled ? "Áudio-descrição desativada nas definições" :
@@ -458,7 +463,11 @@ export const LyriaPlayer: React.FC = () => {
         <button type="button"
           className="big-button btn-analysis"
           onClick={(e) => {
-            if (isAnalysisPlaying || isOverlayActive) { e.preventDefault(); return; }
+            if (isOverlayActive) { e.preventDefault(); return; }
+            if (isAnalysisPlaying) {
+              stopTts();
+              return;
+            }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhuma obra foi identificada.");
             } else if (failedTasks['tts-analysis'] || failedTasks['sfx']) {
@@ -472,9 +481,9 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis", true)}
-          aria-disabled={isAnalysisPlaying || isOverlayActive}
+          aria-disabled={isOverlayActive}
           aria-label={
-            isAnalysisPlaying ? "A análise detalhada está a ser reproduzida" :
+            isAnalysisPlaying ? "Parar análise detalhada" :
             !activePainting ? "Análise Detalhada não disponível pois nenhuma obra foi detetada" :
             (failedTasks['tts-analysis'] || failedTasks['sfx']) ? "Erro na análise detalhada. Verifique a internet" :
             !settings.analysisEnabled ? "Análise detalhada desativada nas definições" :
@@ -492,7 +501,11 @@ export const LyriaPlayer: React.FC = () => {
         <button type="button"
           className="big-button btn-intention"
           onClick={(e) => {
-            if (isIntentionPlaying || isOverlayActive) { e.preventDefault(); return; }
+            if (isOverlayActive) { e.preventDefault(); return; }
+            if (isIntentionPlaying) {
+              stopTts();
+              return;
+            }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
             } else if (activePainting.id.toString().startsWith("unknown")) {
@@ -510,9 +523,9 @@ export const LyriaPlayer: React.FC = () => {
             }
           }}
           onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention", true)}
-          aria-disabled={isIntentionPlaying || isOverlayActive}
+          aria-disabled={isOverlayActive}
           aria-label={
-            isIntentionPlaying ? "A intenção do autor está a ser reproduzida" :
+            isIntentionPlaying ? "Parar intenção do autor" :
             !activePainting ? "Intenção do Autor não disponível pois nenhuma obra foi detetada" :
             activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para obras desconhecidas" :
             !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
