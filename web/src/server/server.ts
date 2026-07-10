@@ -82,12 +82,12 @@ app.post("/api/analyze", async (req, res) => {
       3. Generate recognizable SFX prompts for specific detected objects.
 
       ### OUTPUT REQUIREMENTS:
-      - **Language:** Strings intended for user playback (ArtDescription, ArtAnalysis, DetectedEmotions, Object) MUST be in European Portuguese (PT-PT). Strings intended for AI generation models (MusicPrompt.Prompt and SoundEffectPrompt) MUST be strictly in English.
+      - **Language:** Strings intended for user playback (ArtDescription, ArtAnalysis, Object) MUST be in European Portuguese (PT-PT). Strings intended for AI generation/analysis models (MusicPrompt.Prompt, SoundEffectPrompt, and DetectedEmotions) MUST be strictly in English.
       - **Format:** Strict JSON. No conversational filler.
       - **Tone:** Analytical, evocative, and psychologically grounded.
       - **Detected Objects Rules:** List of the most relevantly detected objects in the painting (up to 5 objects). Do not force 5 objects; only include objects that are significant to the composition or atmosphere. Can be as few as 1 or 2 if the painting is simple. Order by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance).
       - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
-      - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
+      - **Emotion Selection Rules:** The detected emotions should be from the following selection, returned exactly as written in English (do NOT translate them): Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
       - **Music Prompt Rules:** The prompt must be a single, unified descriptive paragraph that weaves together ALL detected emotions, the selected instruments, genre, mood, and, when available, the author's stated intention for the artwork. The author's intention should influence the emotional tone, instrument choices, and overall character of the music.
       - **Audio Description Rules:** Write for a Blind or Low Vision audience. Use a clear spatial logic (e.g., foreground to background, or left to right) to help the user construct a mental map. 
       
@@ -95,7 +95,7 @@ app.post("/api/analyze", async (req, res) => {
       {
         "ArtDescription": "Breve descrição física da obra.",
         "ArtAnalysis": "Análise profunda correlacionando estética e contexto histórico.",
-        "DetectedEmotions": ["Emoção 1", "Emoção 2"],
+        "DetectedEmotions": ["Emotion 1", "Emotion 2"],
         "MusicPrompt": {
           "Instruments": "Lista de instrumentos baseada na textura visual.",
           "MusicGenre": "Género musical que reflete a época e o sentimento.",

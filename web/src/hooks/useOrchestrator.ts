@@ -373,7 +373,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
       // 1. Music (Lyria)
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config) });
+        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config, { emotions: analysis.DetectedEmotions, objectCount: objects.length }) });
       }
 
       // 2. TTS Description
