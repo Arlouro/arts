@@ -15,9 +15,22 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-// Security: Enable CORS for the frontend origin
+const allowedOrigins = [
+  "https://arts-lac.vercel.app",
+  "https://arts-lac-test.vercel.app",
+];
 app.use(cors({
-  origin: "https://arts-lac.vercel.app",
+  origin: (origin, callback) => {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/arts-lac[a-z0-9-]*\.vercel\.app$/.test(origin) ||
+      /^http:\/\/localhost(:\d+)?$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type", "ngrok-skip-browser-warning"]
 }));
