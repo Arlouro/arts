@@ -12,11 +12,10 @@ const RECONNECT_MAX_ATTEMPTS = 4;
 const RECONNECT_BASE_DELAY_MS = 1500;
 
 const ARC_ENABLED = true;
-const ARC_STEP_SECONDS = 12;              
+const ARC_STEP_SECONDS = 12;
 const ARC_VALENCE_BRIGHTNESS_BIAS = 0.15; // valence → timbre
 const ARC_BRIGHTNESS_GAIN = 0.35;         // energy Δ → brightness swing
 const ARC_DENSITY_GAIN = 0.30;            // energy Δ → density swing
-const ARC_BPM_GAIN = 22;                  // energy Δ → tempo swing
 const ARC_EASEIN = 0.5;
 
 function isLyriaConnectRetriable(error: unknown): boolean {
@@ -335,13 +334,11 @@ export class LyriaService {
     const homeBrightness = clamp((this.baseConfig?.brightness ?? 0.5)
       + ARC_VALENCE_BRIGHTNESS_BIAS * arc.homeValence, 0, 1);
     const baseDensity = this.baseConfig?.density ?? 0.5;
-    const baseBpm = this.baseConfig?.bpm ?? 100;
 
     const merged: LiveMusicGenerationConfig = {
       ...(this.baseConfig ?? {}),
       brightness: clamp(homeBrightness + ARC_BRIGHTNESS_GAIN * dEnergy, 0, 1),
       density: clamp(baseDensity + ARC_DENSITY_GAIN * dEnergy, 0, 1),
-      bpm: Math.round(clamp(baseBpm + ARC_BPM_GAIN * dEnergy, 60, 200)),
     };
 
     this.session
