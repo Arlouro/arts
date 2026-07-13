@@ -4,7 +4,7 @@ import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
 import { CameraStream } from './CameraStream';
 import { OnboardingModal } from './OnboardingModal';
-import { playEarcon, haptic, HAPTICS } from '../utils/audioFeedback';
+import { playEarcon, haptic, HAPTICS, duckProcessingBed } from '../utils/audioFeedback';
 import type { Painting } from '../types/painting';
 
 const IS_DEV_MODE = import.meta.env.DEV;
@@ -48,6 +48,8 @@ export const LyriaPlayer: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalVariant, setModalVariant] = useState<'warning' | 'error'>('warning');
+
+  const [liveMessage, setLiveMessage] = useState("");
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -137,15 +139,17 @@ export const LyriaPlayer: React.FC = () => {
     }
   }, []);
 
-  const statusMessages: Record<string, string> = {
-    idle: "À procura de obra...Aponte a câmara diretamente para uma obra de arte.",
-    focusing: "Quadro à vista. Mantenha o dispositivo imóvel para o capturar.",
-    centered: "A capturar a imagem. Mantenha o dispositivo imóvel.",
-    out_of_frame_left: "O quadro está cortado pela margem esquerda. Mova a câmara para a esquerda.",
-    out_of_frame_right: "O quadro está cortado pela margem direita. Mova a câmara para a direita.",
-    out_of_frame_top: "O quadro está cortado pela margem superior. Mova a câmara para cima.",
-    out_of_frame_bottom: "O quadro está cortado pela margem inferior. Mova a câmara para baixo.",
-    processing: "A analisar o contexto emocional da obra..."
+const statusMessages: Record<string, string> = {
+    idle: "À procura de um quadro. Aponte a câmara para um quadro. Se quiser parar a procura, prima o botão novamente.",
+    focusing: "Possível quadro detetado.",
+    centered: "Quadro totalmente dentro do campo de visão da câmara. Mantenha o dispositivo estável.",
+    out_of_frame_left: "Quadro está cortado na margem esquerda. Mova a câmara mais para a esquerda.",
+    out_of_frame_right: "Quadro está cortado na margem direita. Mova a câmara mais para a direita.",
+    out_of_frame_top: "Quadro está cortado na margem superior. Mova a câmara mais para cima.",
+    out_of_frame_bottom: "Quadro está cortado na margem inferior. Mova a câmara mais para baixo.",
+    processing: "Quadro capturado. A analisar o quadro e a compor a paisagem sonora. Isto pode demorar alguns segundos, por favor aguarde.",
+    paused: "Procura parada. A câmara está em pausa. Prima o botão Procurar quadro para recomeçar a procura de um quadro.",
+    ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
   };
 
   const announce = (text: string, key?: string, force: boolean = false) => {
@@ -221,34 +225,72 @@ export const LyriaPlayer: React.FC = () => {
     }
   };
 
+  const announceBoth = (text: string) => {
+    announce(text, undefined, true);
+    setLiveMessage("");
+    requestAnimationFrame(() => setLiveMessage(text));
+  };
+
   const lastCenteringAnnouncementRef = useRef<number>(0);
-  const lastCenteringStatusRef = useRef<string>("");
+  const lastAnnouncedStatusRef = useRef<string>("");
+
+  const getLifecycleStatus = (): string => {
+    if (!isSearching) return statusMessages.paused;
+    if (isProcessing && activePainting) {
+      const isUnknown = activePainting.id.toString().startsWith("unknown");
+      if (isUnknown) {
+        return "Quadro capturado. Quadro desconhecido. A analisar o quadro e a compor a paisagem sonora, sem ter em conta a intenção do autor e o contexto, pois o quadro é desconhecido. Isto pode demorar alguns segundos, por favor aguarde.";
+      }
+      let identity = activePainting.title;
+      if (settings.screenReaderMode) {
+        const artist = activePainting.artist && activePainting.artist !== "Desconhecido" ? activePainting.artist : "";
+        const year = activePainting.year && activePainting.year !== "Desconhecido" ? activePainting.year : "";
+        if (artist) identity += `, de ${artist}`;
+        if (year) identity += `, ${year}`;
+      }
+      return `Quadro capturado. Quadro identificado como ${identity}. A analisar o quadro e a compor a paisagem sonora, tendo em conta a intenção do autor e o contexto. Isto pode demorar alguns segundos, por favor aguarde.`;
+    }
+    if (activePainting) return "";
+    return statusMessages[detectionStatus] || statusMessages.idle;
+  };
 
   useEffect(() => {
     if (isPaused || !hasInteracted || !isSearching) return;
+    if (activePainting && !isProcessing) return;
 
-    if (isProcessing && activePainting) {
-      announce("A analisar obra e a compor paisagem sonora. Pode demorar alguns segundos.", "processing");
-    } else if (!isProcessing && activePainting) {
-      
-    } else if (detectionStatus === 'idle') {
-      announce("À procura de um quadro.", "searching_painting");
-    } else if (detectionStatus === 'focusing') {
-      announce("Quadro à vista. Mantenha o dispositivo imóvel para o capturar.", "painting_detected_focus");
-    } else if (detectionStatus === 'centered') {
-      announce("A capturar a imagem. Mantenha o dispositivo imóvel.", "capturing_image");
-    } else if (detectionStatus.startsWith('out_of_frame')) {
-      const now = Date.now();
-      const isSameStatus = detectionStatus === lastCenteringStatusRef.current;
-      const cooldown = isSameStatus ? 8000 : 4000;
-      
-      if (now - lastCenteringAnnouncementRef.current >= cooldown) {
-        announce(statusMessages[detectionStatus] || "O quadro está cortado. Afaste-se um pouco.", undefined, true);
-        lastCenteringAnnouncementRef.current = now;
-        lastCenteringStatusRef.current = detectionStatus;
-      }
+    const msg = getLifecycleStatus();
+    if (!msg) return;
+
+    const isOutOfFrame = detectionStatus.startsWith('out_of_frame');
+    if (msg !== lastAnnouncedStatusRef.current) {
+      announce(msg, undefined, true);
+      lastAnnouncedStatusRef.current = msg;
+      lastCenteringAnnouncementRef.current = Date.now();
+    } else if (isOutOfFrame && Date.now() - lastCenteringAnnouncementRef.current >= 8000) {
+      announce(msg, undefined, true);
+      lastCenteringAnnouncementRef.current = Date.now();
     }
   }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted, isSearching]);
+
+  const wasSearchingRef = useRef(false);
+  useEffect(() => {
+    if (hasInteracted && wasSearchingRef.current && !isSearching) {
+      lastAnnouncedStatusRef.current = "";
+      announce(statusMessages.paused, undefined, true);
+    }
+    wasSearchingRef.current = isSearching;
+  }, [isSearching, hasInteracted]);
+
+  useEffect(() => {
+    if (!isProcessing || !hasInteracted) return;
+    const id = window.setInterval(() => {
+      announceBoth("Aguarde mais alguns segundos.");
+      // Duck the waiting music so the spoken/screen-reader cue stays intelligible.
+      duckProcessingBed(true, settings.masterVolume);
+      window.setTimeout(() => duckProcessingBed(false, settings.masterVolume), 3500);
+    }, 30000);
+    return () => clearInterval(id);
+  }, [isProcessing, hasInteracted, settings.masterVolume]);
 
   const prevStatusRef = useRef<string>('');
   useEffect(() => {
@@ -268,8 +310,13 @@ export const LyriaPlayer: React.FC = () => {
     if (criticalError) {
       if (settings.earconsEnabled) playEarcon('error', settings.masterVolume);
       if (settings.hapticsEnabled) haptic(HAPTICS.error);
+      announce(criticalError, undefined, true);
     }
   }, [criticalError, settings.earconsEnabled, settings.hapticsEnabled, settings.masterVolume]);
+
+  useEffect(() => {
+    if (isModalOpen && modalMessage) announce(modalMessage, undefined, true);
+  }, [isModalOpen, modalMessage]);
 
   const autoNarratedRef = useRef<string | number | null>(null);
   useEffect(() => {
@@ -283,11 +330,22 @@ export const LyriaPlayer: React.FC = () => {
     })();
   }, [settings.autoNarrate, isProcessing, isPaused, activePainting?.id, settings.descriptionEnabled, settings.analysisEnabled, playDescription, playAnalysis]);
 
-  const currentStatus = !isSearching
-    ? "Câmara em pausa. Prima o botão de 'Procurar quadro' para recomeçar a procura."
-    : activePainting 
-      ? `Obra detetada: ${activePainting.title}. ${isProcessing ? "A compor a paisagem sonora... (aguarde alguns segundos)" : ""}` 
-      : statusMessages[detectionStatus] || statusMessages.idle;
+  const currentStatus = getLifecycleStatus();
+
+  const handleTogglePause = () => {
+    if (!activePainting) {
+      setModalMessage("Não é possível realizar esta ação: nenhum áudio a tocar.");
+      setModalVariant('warning');
+      setIsModalOpen(true);
+      return;
+    }
+    togglePause();
+    announceBoth(
+      isPaused
+        ? "Áudio irá continuar a tocar a partir de onde foi parado."
+        : "Áudio pausado. Se quiser voltar a tocar o áudio, prima o botão novamente."
+    );
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -309,12 +367,7 @@ export const LyriaPlayer: React.FC = () => {
       if (event.key === ' ') {
         if (!isFocusedOnActionable) {
           event.preventDefault();
-          if (!activePainting) {
-            handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.");
-          } else {
-            togglePause();
-            announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause", true);
-          }
+          handleTogglePause();
         }
       }
 
@@ -360,7 +413,8 @@ export const LyriaPlayer: React.FC = () => {
   };
 
   return (
-    <div className="App" aria-roledescription="Aplicação de experiência sonora para obras de arte">
+    <div className="App" aria-roledescription="Aplicação de experiência sonora para quadros">
+      <div className="sr-only" aria-live="assertive" aria-atomic="true">{liveMessage}</div>
       <header className="top-bar" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
         <h1>ARTS</h1>
         <div className="status-info" aria-live="assertive" aria-atomic="true">
@@ -372,6 +426,7 @@ export const LyriaPlayer: React.FC = () => {
           onClick={() => {
             setIsSettingsOpen(true);
             window.history.pushState({ overlay: 'settings' }, '', '#settings');
+            announce("Definições abertas.", undefined, true);
           }}
           onMouseEnter={() => announce("Definições", "settings", true)}
           aria-label="Abrir definições do sistema"
@@ -386,15 +441,15 @@ export const LyriaPlayer: React.FC = () => {
         <nav aria-label="Ações principais" style={{ display: 'contents' }}>
         <button type="button"
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
-          onClick={() => handleActionWithCheck(togglePause, !!activePainting, "Não é possível realizar esta ação: nenhuma obra foi identificada.")}
-          onMouseEnter={() => announce(isPaused ? "Iniciar" : "Pausar", isPaused ? "start" : "pause", true)}
-          aria-label={isPaused ? "Iniciar sistema e retomar deteção" : "Pausar sistema e parar áudio"}
+          onClick={handleTogglePause}
+          onMouseEnter={() => announce(isPaused ? "Continuar a reproduzir o áudio" : "Pausar", undefined, true)}
+          aria-label={isPaused ? "Continuar a reproduzir o áudio" : "Pausar sistema e parar áudio"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className={`fa-regular ${isPaused ? 'fa-circle-play' : 'fa-circle-pause'}`}></i>
           </span>
-          <span>{isPaused ? 'Iniciar' : 'Pausar'}</span>
+          <span>{isPaused ? 'Continuar a reproduzir o áudio' : 'Pausar'}</span>
         </button>
 
         <button type="button"
@@ -428,10 +483,11 @@ export const LyriaPlayer: React.FC = () => {
             if (isOverlayActive) { e.preventDefault(); return; }
             if (isDescriptionPlaying) {
               stopTts();
+              announceBoth("Áudio-descrição parada.");
               return;
             }
             if (!activePainting) {
-              handleActionWithCheck(() => {}, false, "Não é possível tocar a áudio-descrição: nenhuma obra foi identificada.");
+              handleActionWithCheck(() => {}, false, "Não é possível tocar a áudio-descrição: nenhum quadro foi identificado.");
             } else if (failedTasks['tts-description']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a áudio-descrição. Verifique a sua ligação à internet.", "error");
             } else if (!settings.descriptionEnabled) {
@@ -446,11 +502,11 @@ export const LyriaPlayer: React.FC = () => {
           aria-disabled={isOverlayActive}
           aria-label={
             isDescriptionPlaying ? "Parar áudio-descrição" :
-            !activePainting ? "Áudio-descrição não disponível pois nenhuma obra foi detetada" :
+            !activePainting ? "Áudio-descrição não disponível pois nenhum quadro foi detetado" :
             failedTasks['tts-description'] ? "Erro na áudio-descrição. Verifique a internet" :
             !settings.descriptionEnabled ? "Áudio-descrição desativada nas definições" :
             !descriptionText ? "A áudio-descrição ainda está a ser gerada" :
-            "Tocar Áudio-descrição da obra"
+            "Tocar Áudio-descrição do quadro"
           }
           tabIndex={isOverlayActive ? -1 : 0}
         >
@@ -466,10 +522,11 @@ export const LyriaPlayer: React.FC = () => {
             if (isOverlayActive) { e.preventDefault(); return; }
             if (isAnalysisPlaying) {
               stopTts();
+              announceBoth("Análise detalhada parada.");
               return;
             }
             if (!activePainting) {
-              handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhuma obra foi identificada.");
+              handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhum quadro foi identificado.");
             } else if (failedTasks['tts-analysis'] || failedTasks['sfx']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a análise detalhada e os efeitos sonoros. Verifique a sua ligação à internet.", "error");
             } else if (!settings.analysisEnabled) {
@@ -484,11 +541,11 @@ export const LyriaPlayer: React.FC = () => {
           aria-disabled={isOverlayActive}
           aria-label={
             isAnalysisPlaying ? "Parar análise detalhada" :
-            !activePainting ? "Análise Detalhada não disponível pois nenhuma obra foi detetada" :
+            !activePainting ? "Análise Detalhada não disponível pois nenhum quadro foi detetado" :
             (failedTasks['tts-analysis'] || failedTasks['sfx']) ? "Erro na análise detalhada. Verifique a internet" :
             !settings.analysisEnabled ? "Análise detalhada desativada nas definições" :
             !analysisText ? "A análise detalhada ainda está a ser gerada" :
-            "Tocar Análise Detalhada da obra e som de objetos identificados"
+            "Tocar Análise Detalhada do quadro e som de objetos identificados"
           }
           tabIndex={isOverlayActive ? -1 : 0}
         >
@@ -504,16 +561,17 @@ export const LyriaPlayer: React.FC = () => {
             if (isOverlayActive) { e.preventDefault(); return; }
             if (isIntentionPlaying) {
               stopTts();
+              announceBoth("Intenção do autor parada.");
               return;
             }
             if (!activePainting) {
-              handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhuma obra foi identificada.");
+              handleActionWithCheck(() => {}, false, "Não é possível tocar a intenção do autor: nenhum quadro foi identificado.");
             } else if (activePainting.id.toString().startsWith("unknown")) {
-              handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível porque a obra é desconhecida e não consta na base de dados.");
+              handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível porque o quadro é desconhecido e não consta na base de dados.");
             } else if (!settings.intentionEnabled) {
               handleActionWithCheck(() => {}, false, "A intenção do autor está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") {
-              handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível para esta obra.");
+              handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível para este quadro.");
             } else if (failedTasks['tts-intention']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a intenção do autor. Verifique a sua ligação à internet.", "error");
             } else if (!authorsIntentionText) {
@@ -526,13 +584,13 @@ export const LyriaPlayer: React.FC = () => {
           aria-disabled={isOverlayActive}
           aria-label={
             isIntentionPlaying ? "Parar intenção do autor" :
-            !activePainting ? "Intenção do Autor não disponível pois nenhuma obra foi detetada" :
-            activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para obras desconhecidas" :
+            !activePainting ? "Intenção do Autor não disponível pois nenhum quadro foi detetado" :
+            activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para quadros desconhecidos" :
             !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
-            (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") ? "A intenção do autor não está disponível para esta obra" :
+            (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") ? "A intenção do autor não está disponível para este quadro" :
             failedTasks['tts-intention'] ? "Erro na intenção do autor. Verifique a internet" :
             !authorsIntentionText ? "A intenção do autor ainda está a ser gerada" :
-            "Tocar Intenção do Autor da obra"
+            "Tocar Intenção do Autor do quadro"
           }
           tabIndex={isOverlayActive ? -1 : 0}
         >
@@ -550,6 +608,7 @@ export const LyriaPlayer: React.FC = () => {
           onUpdate={updateSettings}
           onClose={() => {
             setIsSettingsOpen(false);
+            announce("Definições fechadas.", undefined, true);
             if (!closedViaPopState.current) {
               window.history.back();
             }
@@ -582,8 +641,8 @@ export const LyriaPlayer: React.FC = () => {
       />
 
       <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
-        {isProcessing ? "A processar detalhes da obra e a gerar áudio. Este processo demora alguns segundos, por favor aguarde." : ""}
-        {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Obra atual: Obra desconhecida" : `Obra atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
+        {isProcessing ? "A processar detalhes do quadro e a gerar áudio. Este processo demora alguns segundos, por favor aguarde." : ""}
+        {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Quadro atual: Quadro desconhecido" : `Quadro atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
       </footer>
 
       <CameraStream 

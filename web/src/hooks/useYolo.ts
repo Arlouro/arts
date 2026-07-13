@@ -61,7 +61,7 @@ export const useYolo = (
           style: "Desconhecido",
           genre: "Desconhecido",
           medium: "Desconhecido",
-          description: "Obra não identificada na base de dados.",
+          description: "Quadro não identificado na base de dados.",
           authors_intention: "Desconhecido",
           context: "Desconhecido",
           imagePath: "",

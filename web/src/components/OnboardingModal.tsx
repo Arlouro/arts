@@ -25,15 +25,15 @@ const PAGES: OnboardingPage[] = [
     icon: 'fa-solid fa-camera',
     title: 'Aponte a Câmara',
     description:
-      'Clique no botão "Procurar quadro" e direcione o seu dispositivo para uma obra de arte.',
+      'Clique no botão "Procurar quadro" e direcione o seu dispositivo para um quadro.',
     detail:
-      'O sistema deteta a obra automaticamente. Mantenha o dispositivo estável para uma captura precisa.',
+      'O sistema deteta o quadro automaticamente. Mantenha o dispositivo estável para uma captura precisa.',
   },
   {
     icon: 'fa-solid fa-wand-magic-sparkles',
     title: 'Aguarde a Criação',
     description:
-      'O sistema analisa a obra e utiliza a intenção do autor para compor uma paisagem sonora.',
+      'O sistema analisa o quadro e utiliza a intenção do autor para compor uma paisagem sonora.',
     detail:
       'Este processo demora alguns segundos. Aguarde enquanto a paisagem sonora é gerada.',
   },
@@ -41,7 +41,7 @@ const PAGES: OnboardingPage[] = [
     icon: 'fa-solid fa-headphones',
     title: 'Explore o Som',
     description:
-      'Ouça a paisagem sonora e explore as diferentes camadas de informação sobre a obra.',
+      'Ouça a paisagem sonora e explore as diferentes camadas de informação sobre o quadro.',
     detail:
       'Áudio-descrição, análise detalhada e intenção do autor, tudo ao toque de um botão.',
   },
@@ -72,6 +72,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
     requestAnimationFrame(() => {
       headingRef.current?.focus();
     });
+  }, [currentPage]);
+
+  const announceRef = useRef(announce);
+  announceRef.current = announce;
+  useEffect(() => {
+    announceRef.current(
+      `Passo ${currentPage + 1} de ${PAGES.length}. ${page.title}. ${page.description} ${page.detail}`,
+      undefined,
+      true
+    );
   }, [currentPage]);
 
   // Keyboard focus trap: Tab cycles within the dialog
@@ -157,7 +167,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
         )}
 
         <div className="sr-only" aria-live="polite" aria-atomic="true">
-          Passo {currentPage + 1} de {PAGES.length}: {page.title}
+          Passo {currentPage + 1} de {PAGES.length}. {page.title}. {page.description} {page.detail}
         </div>
 
         <div

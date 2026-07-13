@@ -85,6 +85,11 @@ export function startProcessingBed(volume = 1): void {
   waitingAudio.play().catch(() => {});
 }
 
+export function duckProcessingBed(duck: boolean, volume = 1): void {
+  if (!waitingAudio || fadeInterval) return;
+  waitingAudio.volume = clamp(volume * (duck ? 0.06 : 0.25), 0, 1);
+}
+
 export function stopProcessingBed(fade = 1.0): void {
   if (!waitingAudio) return;
   if (fadeInterval) {

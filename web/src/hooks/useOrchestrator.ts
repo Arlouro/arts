@@ -327,18 +327,20 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
       lyria.stop();
 
-      // Kick off intro + completion TTS immediately — they only need painting
-      // metadata, not the Gemini analysis, so they run in parallel with it.
       let introBufferPromise: Promise<AudioBuffer | null> | null = null;
-      if ((settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) && !isPaused) {
+      if ((settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) && !isPaused && !settings.screenReaderMode) {
         const isUnknown = painting.id.toString().startsWith("unknown");
         const introText = isUnknown 
-          ? "Obra desconhecida." 
+          ? "Quadro desconhecido."
           : `${painting.title}. ${painting.artist && painting.artist !== "Desconhecido" ? `Por ${painting.artist}.` : ""} ${painting.year && painting.year !== "Desconhecido" ? `Ano, ${painting.year}.` : ""}`;
         introBufferPromise = tts.generateSpeechBuffer(introText, signal);
       }
 
-      const completionText = "A paisagem sonora está pronta.";
+      const completionText = settings.musicEnabled
+        ? "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada do quadro e a intenção do autor."
+        : settings.sfxEnabled
+          ? "A paisagem sonora está pronta, mas a música está desativada nas definições. Se a quiser ouvir, ative a música nas definições."
+          : "A análise do quadro está pronta, mas a paisagem sonora está desativada, porque a música e os sons dos objetos estão desligados. Para os ouvir, ative-os nas definições.";
       const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
 
       const analysis = await gemini.analyzePainting(painting, signal);
@@ -496,13 +498,13 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       console.error("Orchestration failed:", error);
       lastPaintingId.current = null;
       setCriticalError(
-        "Não foi possível processar a obra de arte. " +
+        "Não foi possível processar o quadro e gerar a paisagem sonora. " +
         "Verifique a sua ligação à internet e reinicie o sistema."
       );
     } finally {
       setIsProcessing(false);
     }
-  }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, waitForSystemVoice]);
+  }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, settings.screenReaderMode, waitForSystemVoice]);
 
   const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus, handleTracking);
   emitRef.current = emit;
