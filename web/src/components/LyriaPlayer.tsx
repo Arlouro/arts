@@ -500,14 +500,7 @@ const statusMessages: Record<string, string> = {
           }}
           onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description", true)}
           aria-disabled={isOverlayActive}
-          aria-label={
-            isDescriptionPlaying ? "Parar áudio-descrição" :
-            !activePainting ? "Áudio-descrição não disponível pois nenhum quadro foi detetado" :
-            failedTasks['tts-description'] ? "Erro na áudio-descrição. Verifique a internet" :
-            !settings.descriptionEnabled ? "Áudio-descrição desativada nas definições" :
-            !descriptionText ? "A áudio-descrição ainda está a ser gerada" :
-            "Tocar Áudio-descrição do quadro"
-          }
+          aria-label={isDescriptionPlaying ? "Parar áudio-descrição" : "Tocar Áudio-descrição do quadro"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
@@ -539,14 +532,7 @@ const statusMessages: Record<string, string> = {
           }}
           onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis", true)}
           aria-disabled={isOverlayActive}
-          aria-label={
-            isAnalysisPlaying ? "Parar análise detalhada" :
-            !activePainting ? "Análise Detalhada não disponível pois nenhum quadro foi detetado" :
-            (failedTasks['tts-analysis'] || failedTasks['sfx']) ? "Erro na análise detalhada. Verifique a internet" :
-            !settings.analysisEnabled ? "Análise detalhada desativada nas definições" :
-            !analysisText ? "A análise detalhada ainda está a ser gerada" :
-            "Tocar Análise Detalhada do quadro e som de objetos identificados"
-          }
+          aria-label={isAnalysisPlaying ? "Parar análise detalhada" : "Tocar Análise Detalhada do quadro e som de objetos identificados"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
@@ -582,16 +568,7 @@ const statusMessages: Record<string, string> = {
           }}
           onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention", true)}
           aria-disabled={isOverlayActive}
-          aria-label={
-            isIntentionPlaying ? "Parar intenção do autor" :
-            !activePainting ? "Intenção do Autor não disponível pois nenhum quadro foi detetado" :
-            activePainting.id.toString().startsWith("unknown") ? "A intenção do autor não está disponível para quadros desconhecidos" :
-            !settings.intentionEnabled ? "Intenção do Autor desativada nas definições" :
-            (!activePainting.authors_intention || activePainting.authors_intention === "Desconhecido") ? "A intenção do autor não está disponível para este quadro" :
-            failedTasks['tts-intention'] ? "Erro na intenção do autor. Verifique a internet" :
-            !authorsIntentionText ? "A intenção do autor ainda está a ser gerada" :
-            "Tocar Intenção do Autor do quadro"
-          }
+          aria-label={isIntentionPlaying ? "Parar intenção do autor" : "Tocar Intenção do Autor do quadro"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
