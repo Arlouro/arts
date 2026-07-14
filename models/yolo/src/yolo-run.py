@@ -192,7 +192,7 @@ while True:
     ema_y  = active['ema_y']
     conf   = active['conf']
 
-    # ── Continuous framing feedback (client-side "centering beacon") ──
+    # ── Continuous framing feedback ──
     beacon_centered = (
         can_capture
         and abs(ema_x - 0.5) < CENTER_ZONE
@@ -216,15 +216,17 @@ while True:
         active_violations = {k: v for k, v in violations.items() if v > 0}
 
         if active_violations:
-            worst_edge = max(active_violations, key=active_violations.get)
-            print(f"ID {obj_id} not fully in frame. Most violated edge: {worst_edge}")
-            sio.emit('status_update', {'status': f'out_of_frame_{worst_edge}'})
+            if len(active_violations) >= 3:
+                print(f"ID {obj_id} cut on multiple edges {list(active_violations)}. Asking to move back.")
+                sio.emit('status_update', {'status': 'out_of_frame_multiple'})
+            else:
+                worst_edge = max(active_violations, key=active_violations.get)
+                print(f"ID {obj_id} not fully in frame. Most violated edge: {worst_edge}")
+                sio.emit('status_update', {'status': f'out_of_frame_{worst_edge}'})
 
         continue
 
-    # ── In-frame dwell logic (centering is guidance only, not a gate) ─────
-    # The painting is confirmed fully in-frame (border-margin passed).
-    # Start / continue the dwell timer — centering is NOT required.
+    # ── In-frame dwell logic ─────
     if obj_id not in dwell_start_times:
         dwell_start_times[obj_id] = current_time
         sio.emit('status_update', {'status': 'centered'})

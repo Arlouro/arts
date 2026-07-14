@@ -27,6 +27,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const [isUiAnnouncing, setIsUiAnnouncing] = useState(false);
   const [criticalError, setCriticalError] = useState<string | null>(null);
   const [failedTasks, setFailedTasks] = useState<Record<string, boolean>>({});
+  const [musicFailed, setMusicFailed] = useState(false);
   const { settings, updateSettings } = useSettings();
 
   const gemini = useMemo(() => new GeminiService(), []);
@@ -309,7 +310,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
       lastPaintingId.current = painting.id;
       setActivePainting(painting);
-      
+
+      setMusicFailed(false);
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
       authorsIntentionBufferRef.current = null;
@@ -442,7 +444,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const results = await Promise.allSettled(generationTasks.map(t => t.promise));
 
       let succeededCount = 0;
-      let musicFailed = false;
+      let musicTaskFailed = false;
       results.forEach((result, i) => {
         const { label } = generationTasks[i];
         if (result.status === 'rejected') {
@@ -453,7 +455,10 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           console.warn(`[Orchestrator] Task "${label}" failed:`, result.reason);
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
-          if (label === 'lyria') musicFailed = true;
+          if (label === 'lyria') {
+            musicTaskFailed = true;
+            setMusicFailed(true);
+          }
         } else {
           succeededCount++;
         }
@@ -469,25 +474,19 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
         stopProcessingBed(1.2);
 
-        try {
-          let completionBuffer = await completionBufferPromise;
-          if (musicFailed) {
-            try {
-              completionBuffer = await tts.generateSpeechBuffer(
-                "A música não pôde ser gerada. Ainda assim, pode explorar o quadro através dos botões de áudio-descrição, análise detalhada e intenção do autor. Para ouvir uma música, procure outra vez o quadro.",
-                signal
-              );
-            } catch { /* keep the standard completion buffer */ }
+        if (!musicTaskFailed) {
+          try {
+            const completionBuffer = await completionBufferPromise;
+            if (completionBuffer && !signal.aborted && !isPaused) {
+              await waitForSystemVoice();
+              await tts.playAudioBuffer(completionBuffer, settings.masterVolume);
+            }
+          } catch (error) {
+            console.error("Completion announcement failed:", error);
           }
-          if (completionBuffer && !signal.aborted && !isPaused) {
-            await waitForSystemVoice();
-            await tts.playAudioBuffer(completionBuffer, settings.masterVolume);
-          }
-        } catch (error) {
-          console.error("Completion announcement failed:", error);
         }
 
-        if (settings.musicEnabled && !musicFailed && !signal.aborted && !isPaused) {
+        if (settings.musicEnabled && !musicTaskFailed && !signal.aborted && !isPaused) {
           lyria.setVolume(settings.masterVolume, 1.0);
         }
       } else {
@@ -495,8 +494,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       }
 
     } catch (error) {
-      // A user-initiated stop/restart aborts the in-flight analysis, which throws here.
-      // That is not a failure — don't raise the critical-error modal for it.
       if (signal.aborted || (error as Error)?.name === 'AbortError') {
         console.log("[Orchestrator] Processing aborted; not a critical error.");
         return;
@@ -564,6 +561,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     sendFrame,
     criticalError,
     failedTasks,
+    musicFailed,
     initAudioContext,
     stopTts: () => tts.stopAll(),
     clearCriticalError: () => setCriticalError(null),
@@ -589,6 +587,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       setDetectionStatus("idle");
       setCriticalError(null);
       setFailedTasks({});
+      setMusicFailed(false);
       
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;

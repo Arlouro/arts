@@ -35,6 +35,7 @@ export const LyriaPlayer: React.FC = () => {
     sendFrame,
     criticalError,
     failedTasks,
+    musicFailed,
     stopAll,
     stopTts,
     initAudioContext
@@ -147,6 +148,7 @@ const statusMessages: Record<string, string> = {
     out_of_frame_right: "Quadro está cortado na margem direita. Mova a câmara mais para a direita.",
     out_of_frame_top: "Quadro está cortado na margem superior. Mova a câmara mais para cima.",
     out_of_frame_bottom: "Quadro está cortado na margem inferior. Mova a câmara mais para baixo.",
+    out_of_frame_multiple: "O quadro está cortado em vários lados. Afaste a câmara do quadro para o enquadrar por completo.",
     processing: "Quadro capturado. A analisar o quadro e a compor a paisagem sonora. Isto pode demorar alguns segundos, por favor aguarde.",
     paused: "Procura parada. A câmara está em pausa. Prima o botão Procurar quadro para recomeçar a procura de um quadro.",
     ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
@@ -317,6 +319,12 @@ const statusMessages: Record<string, string> = {
   useEffect(() => {
     if (isModalOpen && modalMessage) announce(modalMessage, undefined, true);
   }, [isModalOpen, modalMessage]);
+
+  useEffect(() => {
+    if (musicFailed) {
+      announceBoth("A música não pôde ser gerada. Ainda assim, pode explorar o quadro através dos botões de áudio-descrição, análise detalhada e intenção do autor. Para ouvir uma música, procure outra vez o quadro.");
+    }
+  }, [musicFailed]);
 
   const autoNarratedRef = useRef<string | number | null>(null);
   useEffect(() => {
