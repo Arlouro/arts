@@ -467,9 +467,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
         stopProcessingBed(1.2);
 
-        // The "ready" completion cue is spoken by the app's system announcer
-        // (LyriaPlayer), not generated TTS — so nothing is played here.
-
         if (settings.musicEnabled && !musicTaskFailed && !signal.aborted && !isPaused) {
           lyria.setVolume(settings.masterVolume, 1.0);
         }
