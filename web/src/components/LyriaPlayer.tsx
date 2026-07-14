@@ -326,6 +326,19 @@ const statusMessages: Record<string, string> = {
     }
   }, [musicFailed]);
 
+  const readyAnnouncedRef = useRef<string | number | null>(null);
+  useEffect(() => {
+    if (!hasInteracted || !activePainting || isProcessing || isPaused || musicFailed) return;
+    if (readyAnnouncedRef.current === activePainting.id) return;
+    readyAnnouncedRef.current = activePainting.id;
+    const readyMessage = settings.musicEnabled
+      ? "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada do quadro e a intenção do autor."
+      : settings.sfxEnabled
+        ? "A paisagem sonora está pronta, mas a música está desativada nas definições. Se a quiser ouvir, ative a música nas definições."
+        : "A análise do quadro está pronta, mas a paisagem sonora está desativada, porque a música e os sons dos objetos estão desligados. Para os ouvir, ative-os nas definições.";
+    announceBoth(readyMessage);
+  }, [activePainting?.id, isProcessing, isPaused, musicFailed, hasInteracted, settings.musicEnabled, settings.sfxEnabled]);
+
   const autoNarratedRef = useRef<string | number | null>(null);
   useEffect(() => {
     if (!settings.autoNarrate || isProcessing || isPaused || !activePainting) return;
