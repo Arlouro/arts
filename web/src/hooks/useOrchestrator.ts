@@ -431,8 +431,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         try {
           const introBuffer = await introBufferPromise;
           if (introBuffer && !isPaused) {
-            // Wait for system voice/announcements to finish. The music is still
-            // muted at this point, so the intro plays on its own.
             await waitForSystemVoice();
             await tts.playAudioBuffer(introBuffer, settings.masterVolume);
           }
@@ -455,9 +453,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           console.warn(`[Orchestrator] Task "${label}" failed:`, result.reason);
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
-          // A music failure is NOT fatal: the quadro was already identified and the
-          // other content may have succeeded, so we degrade gracefully instead of
-          // forcing a full restart.
           if (label === 'lyria') musicFailed = true;
         } else {
           succeededCount++;
@@ -475,8 +470,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         stopProcessingBed(1.2);
 
         try {
-          // If the music was requested but failed, degrade gracefully: tell the user the
-          // rest is still available instead of announcing the soundscape as ready.
           let completionBuffer = await completionBufferPromise;
           if (musicFailed) {
             try {
