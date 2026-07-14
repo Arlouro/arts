@@ -862,7 +862,7 @@
     height: 100dvh;
     max-height: 100dvh;
     box-shadow: none;
-    padding: max(8vh, env(safe-area-inset-top)) 5vw max(10vh, env(safe-area-inset-bottom)) 5vw;
+    padding: max(6vh, env(safe-area-inset-top)) 5vw calc(env(safe-area-inset-bottom) + 16px) 5vw;
   }
 
   .onboarding-skip {
@@ -886,15 +886,15 @@
 
 
   .onboarding-page-title {
-    font-size: 1.35rem;
+    font-size: 2.2rem;
   }
 
   .onboarding-page-description {
-    font-size: 0.9rem;
+    font-size: 1.4rem;
   }
 
   .onboarding-page-detail {
-    font-size: 0.8rem;
+    font-size: 1.15rem;
   }
 
   .onboarding-icon-wrapper {
