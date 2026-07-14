@@ -338,13 +338,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         introBufferPromise = tts.generateSpeechBuffer(introText, signal);
       }
 
-      const completionText = settings.musicEnabled
-        ? "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada do quadro e a intenção do autor."
-        : settings.sfxEnabled
-          ? "A paisagem sonora está pronta, mas a música está desativada nas definições. Se a quiser ouvir, ative a música nas definições."
-          : "A análise do quadro está pronta, mas a paisagem sonora está desativada, porque a música e os sons dos objetos estão desligados. Para os ouvir, ative-os nas definições.";
-      const completionBufferPromise = tts.generateSpeechBuffer(completionText, signal);
-
       const analysis = await gemini.analyzePainting(painting, signal);
       if (signal.aborted) return;
 
@@ -474,17 +467,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
         stopProcessingBed(1.2);
 
-        if (!musicTaskFailed) {
-          try {
-            const completionBuffer = await completionBufferPromise;
-            if (completionBuffer && !signal.aborted && !isPaused) {
-              await waitForSystemVoice();
-              await tts.playAudioBuffer(completionBuffer, settings.masterVolume);
-            }
-          } catch (error) {
-            console.error("Completion announcement failed:", error);
-          }
-        }
+        // The "ready" completion cue is spoken by the app's system announcer
+        // (LyriaPlayer), not generated TTS — so nothing is played here.
 
         if (settings.musicEnabled && !musicTaskFailed && !signal.aborted && !isPaused) {
           lyria.setVolume(settings.masterVolume, 1.0);
