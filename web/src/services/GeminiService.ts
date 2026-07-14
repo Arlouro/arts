@@ -12,7 +12,10 @@ export class GeminiService {
       return rawData.split(',')[1] || rawData;
     }
 
-    const response = await fetch(path);
+    const response = await fetch(path, { headers: { "ngrok-skip-browser-warning": "true" } });
+    if (!response.ok) {
+      throw new Error(`Could not load painting image (${response.status}) from "${path}"`);
+    }
     const blob = await response.blob();
 
     return new Promise((resolve) => {
@@ -38,7 +41,7 @@ export class GeminiService {
         async () => {
           const response = await fetch(`${API_BASE_URL}/analyze`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
             body: JSON.stringify({
               imageData,
               paintingTitle: paintingData.title,
@@ -53,7 +56,7 @@ export class GeminiService {
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Server responded with ${response.status}`);
+            throw new Error(errorData.detail || errorData.error || `Server responded with ${response.status}`);
           }
 
           return await response.json();
