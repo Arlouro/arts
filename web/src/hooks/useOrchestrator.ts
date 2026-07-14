@@ -444,7 +444,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const results = await Promise.allSettled(generationTasks.map(t => t.promise));
 
       let succeededCount = 0;
-      let lyriaFailed = false;
+      let musicFailed = false;
       results.forEach((result, i) => {
         const { label } = generationTasks[i];
         if (result.status === 'rejected') {
@@ -455,13 +455,10 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           console.warn(`[Orchestrator] Task "${label}" failed:`, result.reason);
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
-          if (label === 'lyria') {
-            lyriaFailed = true;
-            setCriticalError(
-              "Não foi possível conectar ao serviço de música. " +
-              "Verifique a sua ligação à internet e reinicie o sistema."
-            );
-          }
+          // A music failure is NOT fatal: the quadro was already identified and the
+          // other content may have succeeded, so we degrade gracefully instead of
+          // forcing a full restart.
+          if (label === 'lyria') musicFailed = true;
         } else {
           succeededCount++;
         }
@@ -471,14 +468,24 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         `[Orchestrator] Generation complete. ${succeededCount}/${results.length} tasks succeeded.`
       );
 
-      if (!signal.aborted && !isPaused && !lyriaFailed) {
+      if (!signal.aborted && !isPaused) {
         // Ready cue (non-speech) + haptic, then stop the ambient bed.
         if (settingsRef.current.earconsEnabled) playEarcon('ready', settings.masterVolume);
         if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
         stopProcessingBed(1.2);
 
         try {
-          const completionBuffer = await completionBufferPromise;
+          // If the music was requested but failed, degrade gracefully: tell the user the
+          // rest is still available instead of announcing the soundscape as ready.
+          let completionBuffer = await completionBufferPromise;
+          if (musicFailed) {
+            try {
+              completionBuffer = await tts.generateSpeechBuffer(
+                "A música não pôde ser gerada. Ainda assim, pode explorar o quadro através dos botões de áudio-descrição, análise detalhada e intenção do autor. Para ouvir uma música, procure outra vez o quadro.",
+                signal
+              );
+            } catch { /* keep the standard completion buffer */ }
+          }
           if (completionBuffer && !signal.aborted && !isPaused) {
             await waitForSystemVoice();
             await tts.playAudioBuffer(completionBuffer, settings.masterVolume);
@@ -487,7 +494,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           console.error("Completion announcement failed:", error);
         }
 
-        if (settings.musicEnabled && !signal.aborted && !isPaused) {
+        if (settings.musicEnabled && !musicFailed && !signal.aborted && !isPaused) {
           lyria.setVolume(settings.masterVolume, 1.0);
         }
       } else {
@@ -495,6 +502,12 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       }
 
     } catch (error) {
+      // A user-initiated stop/restart aborts the in-flight analysis, which throws here.
+      // That is not a failure — don't raise the critical-error modal for it.
+      if (signal.aborted || (error as Error)?.name === 'AbortError') {
+        console.log("[Orchestrator] Processing aborted; not a critical error.");
+        return;
+      }
       console.error("Orchestration failed:", error);
       lastPaintingId.current = null;
       setCriticalError(
