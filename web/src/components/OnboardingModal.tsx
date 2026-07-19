@@ -178,18 +178,21 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           { '--page-accent': PAGE_COLORS[currentPage] } as React.CSSProperties
         }
       >
-        {/* Skip button */}
+        {/* Skip button — shares onboarding-nav-btn so its size matches
+            Anterior/Seguinte exactly, on every breakpoint, with no drift. */}
         {!isLastPage && (
-          <button
-            type="button"
-            className="onboarding-skip"
-            onClick={onStart}
-            onMouseEnter={() => announce("Saltar introdução", "onboarding_skip", true)}
-            aria-label="Saltar introdução e começar a usar o ARTS"
-          >
-            Saltar
-            <i className="fa-solid fa-forward" aria-hidden="true" />
-          </button>
+          <div className="onboarding-skip-row">
+            <button
+              type="button"
+              className="onboarding-nav-btn onboarding-skip"
+              onClick={onStart}
+              onMouseEnter={() => announce("Saltar introdução", "onboarding_skip", true)}
+              aria-label="Saltar introdução e começar a usar o ARTS"
+            >
+              <span>Saltar</span>
+              <i className="fa-solid fa-forward" aria-hidden="true" />
+            </button>
+          </div>
         )}
 
         <div className="sr-only" aria-live="polite" aria-atomic="true">
