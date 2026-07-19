@@ -8,9 +8,11 @@ import { useYolo } from './useYolo.ts';
 import { useSettings } from './useSettings.ts';
 import {
   playEarcon, haptic, HAPTICS,
-  startProcessingBed, stopProcessingBed,
+  stopProcessingBed, unlockUiAudio,
   beaconUpdate, beaconStop,
 } from '../utils/audioFeedback.ts';
+import { getSharedAudioContext, unlockSharedAudio } from '../utils/sharedAudio.ts';
+import { primeSpeechVoices } from '../utils/speech.ts';
 
 export const useOrchestrator = (apiKey: string, isSearching: boolean = false) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,6 +30,9 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const [criticalError, setCriticalError] = useState<string | null>(null);
   const [failedTasks, setFailedTasks] = useState<Record<string, boolean>>({});
   const [musicFailed, setMusicFailed] = useState(false);
+  // Gate that holds music and SFX silent until the "soundscape ready"
+  // announcement has been heard, so the reveal never talks over itself.
+  const [soundscapeReleased, setSoundscapeReleased] = useState(false);
   const { settings, updateSettings } = useSettings();
 
   const gemini = useMemo(() => new GeminiService(), []);
@@ -36,12 +41,12 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const sfx = useMemo(() => new ElevenLabsService(), []);
 
   useEffect(() => {
-    if (settings.musicEnabled && !isPaused) {
+    if (settings.musicEnabled && !isPaused && soundscapeReleased) {
       lyria.setVolume(settings.masterVolume);
     } else {
       lyria.setVolume(0);
     }
-  }, [settings.masterVolume, settings.musicEnabled, isPaused, lyria]);
+  }, [settings.masterVolume, settings.musicEnabled, isPaused, soundscapeReleased, lyria]);
 
   const lastPaintingId = useRef<string | number | null>(null);
   const scanningIntervalRef = useRef<number | null>(null);
@@ -51,29 +56,23 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const analysisBufferRef = useRef<AudioBuffer | null>(null);
   const authorsIntentionBufferRef = useRef<AudioBuffer | null>(null);
   const sfxBuffersRef = useRef<{ buffer: AudioBuffer; pan: number }[]>([]);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const initAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
-      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
-      if (!AudioContextClass) return;
-      audioContextRef.current = new AudioContextClass();
-    }
-    
-    if (audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume().catch(() => {});
-    }
-  }, []);
+    unlockSharedAudio();          
+    unlockUiAudio();              
+    tts.prepareAudio();
+    sfx.prepareAudio();
+    lyria.prepareAudio().catch(() => {});
+    primeSpeechVoices();
+  }, [lyria, tts, sfx]);
 
   const playScanningPing = useCallback(() => {
-    if (!settings.sfxEnabled || isPaused || isProcessing || activePainting || !isSearching) return;
+    if (!settings.sfxEnabled || isPaused || isProcessing || activePainting || !isSearching || criticalError) return;
     
     try {
-      if (!audioContextRef.current) return;
-      const ctx = audioContextRef.current;
-      
-      if (ctx.state === 'suspended') return;
+      const ctx = getSharedAudioContext();
+      if (!ctx || ctx.state !== 'running') return;
 
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -94,10 +93,10 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     } catch (e) {
       console.warn("Could not play scanning ping:", e);
     }
-  }, [settings.masterVolume, settings.sfxEnabled, isPaused, isProcessing, activePainting, isSearching]);
+  }, [settings.masterVolume, settings.sfxEnabled, isPaused, isProcessing, activePainting, isSearching, criticalError]);
 
   useEffect(() => {
-    const shouldPulse = detectionStatus === 'idle' && !activePainting && !isPaused && !isProcessing && isSearching;
+    const shouldPulse = detectionStatus === 'idle' && !activePainting && !isPaused && !isProcessing && isSearching && !criticalError;
     
     if (shouldPulse) {
       playScanningPing();
@@ -112,7 +111,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     return () => {
       if (scanningIntervalRef.current) clearInterval(scanningIntervalRef.current);
     };
-  }, [detectionStatus, activePainting, isPaused, isProcessing, playScanningPing, isSearching]);
+  }, [detectionStatus, activePainting, isPaused, isProcessing, playScanningPing, isSearching, criticalError]);
 
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -139,15 +138,26 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const isUiAnnouncingRef = useRef(false);
   useEffect(() => { isUiAnnouncingRef.current = isUiAnnouncing; }, [isUiAnnouncing]);
 
-  const waitForSystemVoice = useCallback(async () => {
-    // Give a small head-start for any pending announcements to start
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Poll the system voice status AND our manual UI announcement flag
-    while (window.speechSynthesis.speaking || isUiAnnouncingRef.current) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+  const waitForSystemVoice = useCallback(async (startGraceMs: number = 300) => {
+    const graceDeadline = Date.now() + startGraceMs;
+    while (Date.now() < graceDeadline && !window.speechSynthesis.speaking && !isUiAnnouncingRef.current) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    const hardDeadline = Date.now() + 15000;
+    while ((window.speechSynthesis.speaking || isUiAnnouncingRef.current) && Date.now() < hardDeadline) {
+      await new Promise(resolve => setTimeout(resolve, 150));
     }
   }, []);
+
+  useEffect(() => {
+    if (isProcessing || !activePainting || isPaused || soundscapeReleased) return;
+    let cancelled = false;
+    (async () => {
+      await waitForSystemVoice(2500);
+      if (!cancelled) setSoundscapeReleased(true);
+    })();
+    return () => { cancelled = true; };
+  }, [isProcessing, activePainting, isPaused, soundscapeReleased, waitForSystemVoice]);
 
   const stopSfxLoop = useCallback(() => {
     isSfxActiveRef.current = false;
@@ -214,12 +224,22 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   }, [sfx, lyria]);
 
   useEffect(() => {
-    if (isPaused || isProcessing || !settings.sfxEnabled || sfxBuffersRef.current.length === 0) {
+    if (isPaused || isProcessing || criticalError || !soundscapeReleased || !settings.sfxEnabled || sfxBuffersRef.current.length === 0) {
       stopSfxLoop();
     } else {
       startSfxLoop();
     }
-  }, [isPaused, isProcessing, settings.sfxEnabled, startSfxLoop, stopSfxLoop, sfxBuffersRef.current.length]);
+  }, [isPaused, isProcessing, criticalError, soundscapeReleased, settings.sfxEnabled, startSfxLoop, stopSfxLoop, sfxBuffersRef.current.length]);
+
+  const silenceAllAudio = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    beaconStop();
+    stopProcessingBed(0.3);
+    stopSfxLoop();
+    tts.stopAll();
+    await lyria.stop();
+  }, [lyria, tts, stopSfxLoop]);
 
   const playDescription = useCallback(async () => {
     if (!descriptionBufferRef.current || isPaused || !settings.descriptionEnabled) return;
@@ -312,6 +332,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       setActivePainting(painting);
 
       setMusicFailed(false);
+      setSoundscapeReleased(false);
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
       authorsIntentionBufferRef.current = null;
@@ -323,7 +344,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       if (fb.earconsEnabled) playEarcon('capturing', fb.masterVolume);
       if (fb.hapticsEnabled) haptic(HAPTICS.capture);
       beaconStop();
-      if (fb.processingBedEnabled && fb.musicEnabled) startProcessingBed(fb.masterVolume);
 
       console.log(`Starting parallel analysis and generation for: ${painting.title}`);
 
@@ -437,7 +457,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const results = await Promise.allSettled(generationTasks.map(t => t.promise));
 
       let succeededCount = 0;
-      let musicTaskFailed = false;
       results.forEach((result, i) => {
         const { label } = generationTasks[i];
         if (result.status === 'rejected') {
@@ -449,7 +468,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
           if (label === 'lyria') {
-            musicTaskFailed = true;
             setMusicFailed(true);
           }
         } else {
@@ -466,10 +484,6 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         if (settingsRef.current.earconsEnabled) playEarcon('ready', settings.masterVolume);
         if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
         stopProcessingBed(1.2);
-
-        if (settings.musicEnabled && !musicTaskFailed && !signal.aborted && !isPaused) {
-          lyria.setVolume(settings.masterVolume, 1.0);
-        }
       } else {
         stopProcessingBed(0.4);
       }
@@ -544,6 +558,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     failedTasks,
     musicFailed,
     initAudioContext,
+    silenceAllAudio,
+    waitForSystemVoice,
     stopTts: () => tts.stopAll(),
     clearCriticalError: () => setCriticalError(null),
     stopAll: async (resumeDetection: boolean = true) => {
@@ -569,6 +585,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       setCriticalError(null);
       setFailedTasks({});
       setMusicFailed(false);
+      setSoundscapeReleased(false);
       
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;

@@ -711,6 +711,54 @@
   max-width: 360px;
 }
 
+/* --- Screen reader choice (onboarding) --- */
+.onboarding-sr-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 1.5vh;
+}
+
+.onboarding-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: clamp(12px, 1.5vh, 16px) clamp(16px, 3vw, 22px);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: clamp(1rem, 2.2vh, 1.15rem);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.onboarding-choice-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--card-border-hover);
+  transform: translateY(-1px);
+}
+
+.onboarding-choice-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.onboarding-choice-btn--selected {
+  border-color: var(--page-accent, var(--accent));
+  background: rgba(137, 49, 239, 0.18);
+}
+
+.onboarding-choice-btn i {
+  color: var(--text-muted);
+}
+
+.onboarding-choice-btn--selected i {
+  color: var(--page-accent, var(--accent));
+}
+
 /* --- Step indicator dots --- */
 .onboarding-step-nav {
   padding: 0.5vh 0;

@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { speakHardened } from '../utils/speech';
 
 interface OnboardingModalProps {
   onStart: () => void;
   announce: (text: string, key?: string, force?: boolean) => void;
+  screenReaderMode: boolean;
+  onScreenReaderModeChange: (enabled: boolean) => void;
 }
 
 interface OnboardingPage {
@@ -10,6 +13,7 @@ interface OnboardingPage {
   title: string;
   description: string;
   detail: string;
+  interactive?: 'sr-choice';
 }
 
 const PAGES: OnboardingPage[] = [
@@ -20,6 +24,14 @@ const PAGES: OnboardingPage[] = [
       'Transformamos obras de arte visuais em experiências sonoras acessíveis.',
     detail:
       'Uma forma alternativa e inclusiva de apreciar a arte através do som.',
+  },
+  {
+    icon: 'fa-solid fa-universal-access',
+    title: 'Utilização de Leitor de Ecrã',
+    description:
+      'Está a utilizar um leitor de ecrã, como o VoiceOver ou o TalkBack?',
+    detail: '',
+    interactive: 'sr-choice',
   },
   {
     icon: 'fa-solid fa-camera',
@@ -49,12 +61,18 @@ const PAGES: OnboardingPage[] = [
 
 const PAGE_COLORS = [
   'var(--accent)',
+  'var(--purple)',
   'var(--yellow)',
   'var(--warning)',
   'var(--success)'
 ];
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, announce }) => {
+export const OnboardingModal: React.FC<OnboardingModalProps> = ({
+  onStart,
+  announce,
+  screenReaderMode,
+  onScreenReaderModeChange,
+}) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -118,6 +136,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
     dialog.addEventListener('keydown', handleKeyDown);
     return () => dialog.removeEventListener('keydown', handleKeyDown);
   }, [currentPage]);
+
+  const handleSrChoice = (usesScreenReader: boolean) => {
+    onScreenReaderModeChange(usesScreenReader);
+    window.speechSynthesis.cancel();
+    if (!usesScreenReader) {
+      speakHardened('Voz do sistema ativada. O sistema irá guiá-lo por voz. Prima Seguinte para continuar.');
+    }
+  };
 
   const navigateTo = (pageIndex: number) => {
     setDirection(pageIndex > currentPage ? 'next' : 'prev');
@@ -195,7 +221,36 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ onStart, annou
             {page.description}
           </p>
 
-          <p className="onboarding-page-detail">{page.detail}</p>
+          {page.detail && <p className="onboarding-page-detail">{page.detail}</p>}
+
+          {page.interactive === 'sr-choice' && (
+            <div
+              className="onboarding-sr-choice"
+              role="group"
+              aria-label="Está a utilizar um leitor de ecrã?"
+            >
+              <button
+                type="button"
+                className={`onboarding-choice-btn${screenReaderMode ? ' onboarding-choice-btn--selected' : ''}`}
+                aria-pressed={screenReaderMode}
+                onClick={() => handleSrChoice(true)}
+                onMouseEnter={() => announce('Sim, uso leitor de ecrã', undefined, true)}
+              >
+                <i className="fa-solid fa-check" aria-hidden="true" />
+                <span>Sim, uso leitor de ecrã</span>
+              </button>
+              <button
+                type="button"
+                className={`onboarding-choice-btn${!screenReaderMode ? ' onboarding-choice-btn--selected' : ''}`}
+                aria-pressed={!screenReaderMode}
+                onClick={() => handleSrChoice(false)}
+                onMouseEnter={() => announce('Não uso leitor de ecrã', undefined, true)}
+              >
+                <i className="fa-solid fa-xmark" aria-hidden="true" />
+                <span>Não uso leitor de ecrã</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Step indicator dots */}

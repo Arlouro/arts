@@ -15,9 +15,17 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-// Security: Enable CORS for the frontend origin
 app.use(cors({
-  origin: "https://arts-lac.vercel.app",
+  origin: (origin, callback) => {
+    if (
+      !origin ||
+      /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin) ||
+      /^http:\/\/localhost(:\d+)?$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type", "ngrok-skip-browser-warning"]
 }));
@@ -122,23 +130,39 @@ app.post("/api/analyze", async (req, res) => {
         ]
       }`;
 
-    const result = await gemini.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ role: "user", parts: [{ text: prompt }, imagePart] }],
-      config: { responseMimeType: "application/json" }
-    });
+    const analysisModels = ["gemini-3-flash-preview", "gemini-2.5-flash"];
+    let text: string | undefined;
+    let lastError: unknown;
 
-    let text = result?.text ?? "{}";
-    text = text.trim();
-    if (text.startsWith("\`\`\`json")) text = text.slice(7);
-    else if (text.startsWith("\`\`\`")) text = text.slice(3);
-    if (text.endsWith("\`\`\`")) text = text.slice(0, -3);
-    text = text.trim();
+    for (const model of analysisModels) {
+      try {
+        const result = await gemini.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: prompt }, imagePart] }],
+          config: { responseMimeType: "application/json" }
+        });
+
+        let t = result?.text ?? "{}";
+        t = t.trim();
+        if (t.startsWith("\`\`\`json")) t = t.slice(7);
+        else if (t.startsWith("\`\`\`")) t = t.slice(3);
+        if (t.endsWith("\`\`\`")) t = t.slice(0, -3);
+        text = t.trim();
+        break;
+      } catch (err) {
+        lastError = err;
+        console.warn(`Proxy: analysis model "${model}" failed; trying fallback if available:`, err);
+      }
+    }
+
+    if (text === undefined) throw lastError ?? new Error("Analysis failed");
 
     res.json(JSON.parse(text));
   } catch (error) {
     console.error("Proxy: Gemini Analysis Error:", error);
-    res.status(500).json({ error: "Failed to analyze painting" });
+    const detail = (error as Error)?.message ?? String(error);
+    const status = (error as { status?: number })?.status;
+    res.status(500).json({ error: "Failed to analyze painting", detail, status });
   }
 });
 
@@ -147,22 +171,35 @@ app.post("/api/tts/gemini", async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: "Missing text" });
 
-    const result = await gemini.models.generateContent({ 
-      model: "gemini-3.1-flash-tts-preview",
-      contents: [{ role: 'user', parts: [{ text }] }],
-      config: {
-        responseModalities: ["AUDIO"],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },
-          languageCode: "pt-PT",
-        }
+    const ttsModels = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"];
+    let base64Audio: string | undefined;
+    let lastError: unknown;
+
+    for (const model of ttsModels) {
+      try {
+        const result = await gemini.models.generateContent({
+          model,
+          contents: [{ role: 'user', parts: [{ text }] }],
+          config: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } },
+              languageCode: "pt-PT",
+            }
+          }
+        });
+
+        const audioPart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        base64Audio = audioPart?.inlineData?.data;
+        if (base64Audio) break;
+        throw new Error('TTS returned empty audio data');
+      } catch (err) {
+        lastError = err;
+        console.warn(`Proxy: TTS model "${model}" failed; trying fallback if available:`, err);
       }
-    });
+    }
 
-    const audioPart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-    const base64Audio = audioPart?.inlineData?.data;
-
-    if (!base64Audio) throw new Error('TTS returned empty audio data');
+    if (!base64Audio) throw lastError ?? new Error('TTS returned empty audio data');
 
     res.json({ audioData: base64Audio });
   } catch (error) {

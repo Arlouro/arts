@@ -1,13 +1,7 @@
+import { getSharedAudioContext } from './sharedAudio';
+
 function getCtx(): AudioContext | null {
-  const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AC) return null;
-  const w = window as unknown as { __uiAudioContext?: AudioContext };
-  if (!w.__uiAudioContext) {
-    try { w.__uiAudioContext = new AC(); } catch { return null; }
-  }
-  const ctx = w.__uiAudioContext!;
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
+  return getSharedAudioContext();
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -71,16 +65,40 @@ export function haptic(pattern: number | readonly number[]): void {
 
 let waitingAudio: HTMLAudioElement | null = null;
 let fadeInterval: number | null = null;
+let bedGeneration = 0;
 
-export function startProcessingBed(volume = 1): void {
+export function unlockUiAudio(): void {
+  if (!waitingAudio) {
+    waitingAudio = new Audio('/assets/audio/ui/generation_waiting_music.mp3');
+  }
+  const el = waitingAudio;
+  el.muted = true;
+  el.play()
+    .then(() => {
+      el.pause();
+      el.currentTime = 0;
+      el.muted = false;
+    })
+    .catch(() => { el.muted = false; });
+}
+
+export function startProcessingBed(volume = 1, onLoopBoundary?: () => Promise<void> | void): void {
   if (fadeInterval) {
     window.clearInterval(fadeInterval);
     fadeInterval = null;
   }
+  const generation = ++bedGeneration;
   if (!waitingAudio) {
     waitingAudio = new Audio('/assets/audio/ui/generation_waiting_music.mp3');
-    waitingAudio.loop = true;
   }
+  waitingAudio.loop = false;
+  waitingAudio.onended = async () => {
+    if (generation !== bedGeneration || !waitingAudio) return;
+    await onLoopBoundary?.();
+    if (generation !== bedGeneration || !waitingAudio) return;
+    waitingAudio.currentTime = 0;
+    waitingAudio.play().catch(() => {});
+  };
   waitingAudio.volume = clamp(volume * 0.25, 0, 1);
   waitingAudio.play().catch(() => {});
 }
@@ -91,6 +109,7 @@ export function duckProcessingBed(duck: boolean, volume = 1): void {
 }
 
 export function stopProcessingBed(fade = 1.0): void {
+  bedGeneration++;
   if (!waitingAudio) return;
   if (fadeInterval) {
     window.clearInterval(fadeInterval);

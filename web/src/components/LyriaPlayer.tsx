@@ -4,10 +4,13 @@ import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
 import { CameraStream } from './CameraStream';
 import { OnboardingModal } from './OnboardingModal';
-import { playEarcon, haptic, HAPTICS, duckProcessingBed } from '../utils/audioFeedback';
+import { playEarcon, haptic, HAPTICS, startProcessingBed, stopProcessingBed } from '../utils/audioFeedback';
+import { speakHardened } from '../utils/speech';
 import type { Painting } from '../types/painting';
 
 const IS_DEV_MODE = import.meta.env.DEV;
+
+const REMINDER_MIN_GAP_MS = 25000;
 
 export const LyriaPlayer: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
@@ -38,8 +41,13 @@ export const LyriaPlayer: React.FC = () => {
     musicFailed,
     stopAll,
     stopTts,
+    silenceAllAudio,
+    waitForSystemVoice,
     initAudioContext
   } = useOrchestrator(import.meta.env.VITE_GEMINI_API_KEY, isSearching);
+
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const [paintings, setPaintings] = useState<any[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -144,20 +152,30 @@ const statusMessages: Record<string, string> = {
     idle: "À procura de um quadro. Aponte a câmara para um quadro. Se quiser parar a procura, prima o botão novamente.",
     focusing: "Possível quadro detetado.",
     centered: "Quadro totalmente dentro do campo de visão da câmara. Mantenha o dispositivo estável.",
-    out_of_frame_left: "Quadro está cortado na margem esquerda. Mova a câmara mais para a esquerda.",
-    out_of_frame_right: "Quadro está cortado na margem direita. Mova a câmara mais para a direita.",
-    out_of_frame_top: "Quadro está cortado na margem superior. Mova a câmara mais para cima.",
-    out_of_frame_bottom: "Quadro está cortado na margem inferior. Mova a câmara mais para baixo.",
-    out_of_frame_multiple: "O quadro está cortado em vários lados. Afaste a câmara do quadro para o enquadrar por completo.",
+    out_of_frame_left: "Mova a câmara mais para a esquerda.",
+    out_of_frame_right: "Mova a câmara mais para a direita.",
+    out_of_frame_top: "Mova a câmara mais para cima.",
+    out_of_frame_bottom: "Mova a câmara mais para baixo.",
+    out_of_frame_multiple: "Afaste a câmara do quadro.",
     processing: "Quadro capturado. A analisar o quadro e a compor a paisagem sonora. Isto pode demorar alguns segundos, por favor aguarde.",
     paused: "Procura parada. A câmara está em pausa. Prima o botão Procurar quadro para recomeçar a procura de um quadro.",
     ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
   };
 
+  const srBusyTimerRef = useRef<number | null>(null);
+  const markSrReading = (text: string) => {
+    if (!settings.screenReaderMode || !text) return;
+    setIsUiAnnouncing(true);
+    if (srBusyTimerRef.current) window.clearTimeout(srBusyTimerRef.current);
+    srBusyTimerRef.current = window.setTimeout(() => {
+      setIsUiAnnouncing(false);
+      srBusyTimerRef.current = null;
+    }, Math.min(1500 + text.length * 55, 12000));
+  };
+
   const announce = (text: string, key?: string, force: boolean = false) => {
     if (settings.screenReaderMode) {
       setGlobalDucking(false);
-      setIsUiAnnouncing(false);
       return;
     }
 
@@ -200,27 +218,25 @@ const statusMessages: Record<string, string> = {
       };
 
       audio.play().catch(() => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'pt-PT';
-        currentTtsUtteranceRef.current = utterance;
-        utterance.onend = () => {
-          setGlobalDucking(false);
-          setIsUiAnnouncing(false);
-          currentTtsUtteranceRef.current = null;
-        };
-        window.speechSynthesis.speak(utterance);
+        currentTtsUtteranceRef.current = speakHardened(text, {
+          rate: settings.ttsRate ?? 1,
+          onDone: () => {
+            setGlobalDucking(false);
+            setIsUiAnnouncing(false);
+            currentTtsUtteranceRef.current = null;
+          },
+        });
       });
     } else if (hasInteracted) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'pt-PT';
-      currentTtsUtteranceRef.current = utterance;
-      utterance.onend = () => {
-        setGlobalDucking(false);
-        setIsUiAnnouncing(false);
-        lastAnnouncedKey.current = null;
-        currentTtsUtteranceRef.current = null;
-      };
-      window.speechSynthesis.speak(utterance);
+      currentTtsUtteranceRef.current = speakHardened(text, {
+        rate: settings.ttsRate ?? 1,
+        onDone: () => {
+          setGlobalDucking(false);
+          setIsUiAnnouncing(false);
+          lastAnnouncedKey.current = null;
+          currentTtsUtteranceRef.current = null;
+        },
+      });
     } else {
       setGlobalDucking(false);
       setIsUiAnnouncing(false);
@@ -229,6 +245,7 @@ const statusMessages: Record<string, string> = {
 
   const announceBoth = (text: string) => {
     announce(text, undefined, true);
+    markSrReading(text);
     setLiveMessage("");
     requestAnimationFrame(() => setLiveMessage(text));
   };
@@ -285,14 +302,26 @@ const statusMessages: Record<string, string> = {
 
   useEffect(() => {
     if (!isProcessing || !hasInteracted) return;
-    const id = window.setInterval(() => {
-      announceBoth("Aguarde mais alguns segundos.");
-      // Duck the waiting music so the spoken/screen-reader cue stays intelligible.
-      duckProcessingBed(true, settings.masterVolume);
-      window.setTimeout(() => duckProcessingBed(false, settings.masterVolume), 3500);
-    }, 30000);
-    return () => clearInterval(id);
-  }, [isProcessing, hasInteracted, settings.masterVolume]);
+    if (!settings.processingBedEnabled || !settings.musicEnabled) return;
+
+    let cancelled = false;
+    (async () => {
+      await waitForSystemVoice(2500);
+      if (cancelled) return;
+      let lastReminder = Date.now();
+      startProcessingBed(settingsRef.current.masterVolume, async () => {
+        if (cancelled || Date.now() - lastReminder < REMINDER_MIN_GAP_MS) return;
+        lastReminder = Date.now();
+        announceBoth("Aguarde mais alguns segundos.");
+        await waitForSystemVoice(1000);
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      stopProcessingBed(0.8);
+    };
+  }, [isProcessing, hasInteracted, settings.processingBedEnabled, settings.musicEnabled]);
 
   const prevStatusRef = useRef<string>('');
   useEffect(() => {
@@ -310,6 +339,7 @@ const statusMessages: Record<string, string> = {
 
   useEffect(() => {
     if (criticalError) {
+      silenceAllAudio();
       if (settings.earconsEnabled) playEarcon('error', settings.masterVolume);
       if (settings.hapticsEnabled) haptic(HAPTICS.error);
       announce(criticalError, undefined, true);
@@ -352,6 +382,10 @@ const statusMessages: Record<string, string> = {
   }, [settings.autoNarrate, isProcessing, isPaused, activePainting?.id, settings.descriptionEnabled, settings.analysisEnabled, playDescription, playAnalysis]);
 
   const currentStatus = getLifecycleStatus();
+
+  useEffect(() => {
+    markSrReading(currentStatus);
+  }, [currentStatus, settings.screenReaderMode]);
 
   const handleTogglePause = () => {
     if (!activePainting) {
@@ -619,7 +653,12 @@ const statusMessages: Record<string, string> = {
       )}
 
       {showOnboarding && (
-        <OnboardingModal onStart={handleOnboardingComplete} announce={announce} />
+        <OnboardingModal
+          onStart={handleOnboardingComplete}
+          announce={announce}
+          screenReaderMode={settings.screenReaderMode}
+          onScreenReaderModeChange={(enabled) => updateSettings({ screenReaderMode: enabled })}
+        />
       )}
 
       <NotificationModal 

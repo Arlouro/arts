@@ -27,6 +27,7 @@ export class LyriaService {
   private audioContext: AudioContext | null = null;
   private gainNode: GainNode | null = null;
   private nextStartTime: number = 0;
+  private readonly SCHEDULE_LEAD = 0.15;
 
   public onStatusChange?: (status: ServiceStatus) => void;
 
@@ -43,10 +44,21 @@ export class LyriaService {
       this.audioContext = new AudioContext({ sampleRate: 48000 });
       this.gainNode = this.audioContext.createGain();
       this.gainNode.connect(this.audioContext.destination);
+
+      if (this.audioContext.sampleRate !== 48000) {
+        console.warn(
+          `Lyria: AudioContext runs at ${this.audioContext.sampleRate}Hz, not the ` +
+          `requested 48000Hz. Per-chunk resampling may introduce seam artifacts.`
+        );
+      }
     }
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
+  }
+
+  public async prepareAudio() {
+    await this.initAudio();
   }
 
   public setVolume(volume: number, rampTime: number = 0.4) {
@@ -199,14 +211,19 @@ export class LyriaService {
 
   private schedulePlayback(buffer: AudioBuffer) {
     if (!this.audioContext || !this.gainNode) return;
+
+    const now = this.audioContext.currentTime;
+
+    if (this.nextStartTime < now + 0.02) {
+      this.nextStartTime = now + this.SCHEDULE_LEAD;
+    }
+
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
-
     source.connect(this.gainNode);
 
-    const start = Math.max(this.audioContext.currentTime, this.nextStartTime);
-    source.start(start);
-    this.nextStartTime = start + buffer.duration;
+    source.start(this.nextStartTime);
+    this.nextStartTime += buffer.duration;
   }
 
   public pause() {

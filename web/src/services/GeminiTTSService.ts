@@ -1,5 +1,6 @@
 import { decode } from "base64-arraybuffer";
 import { withRetry, isRetryableError } from "../utils/retry.ts";
+import { getSharedAudioContext } from "../utils/sharedAudio.ts";
 
 const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000"}/api`;
 
@@ -21,11 +22,15 @@ export class GeminiTTSService {
 
   private initAudio() {
     if (!this.audioContext) {
-      this.audioContext = new AudioContext();
+      this.audioContext = getSharedAudioContext();
     }
-    if (this.audioContext.state === 'suspended') {
+    if (this.audioContext?.state === 'suspended') {
       this.audioContext.resume();
     }
+  }
+
+  public prepareAudio() {
+    this.initAudio();
   }
 
   async generateSpeechBuffer(text: string, signal?: AbortSignal): Promise<AudioBuffer | null> {

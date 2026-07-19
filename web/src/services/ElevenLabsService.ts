@@ -1,5 +1,6 @@
 import { decode } from "base64-arraybuffer";
 import { withRetry, isRetryableError } from "../utils/retry.ts";
+import { getSharedAudioContext } from "../utils/sharedAudio.ts";
 
 const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000"}/api`;
 
@@ -12,11 +13,15 @@ export class ElevenLabsService {
 
   private initAudio() {
     if (!this.audioContext) {
-      this.audioContext = new AudioContext();
+      this.audioContext = getSharedAudioContext();
     }
-    if (this.audioContext.state === 'suspended') {
+    if (this.audioContext?.state === 'suspended') {
       this.audioContext.resume();
     }
+  }
+
+  public prepareAudio() {
+    this.initAudio();
   }
 
   async generateSfxBuffer(prompt: string, signal?: AbortSignal): Promise<AudioBuffer | null> {
