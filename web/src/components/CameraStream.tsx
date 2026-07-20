@@ -73,11 +73,16 @@ export const CameraStream: React.FC<CameraStreamProps> = ({ onFrame, isPaused, i
     const context = canvas.getContext('2d');
 
     if (context && video.readyState === video.HAVE_ENOUGH_DATA) {
-      // Maintain aspect ratio or force square (YOLO likes square)
-      canvas.width = 640;
-      canvas.height = 480;
+      const srcW = video.videoWidth;
+      const srcH = video.videoHeight;
+      if (!srcW || !srcH) return;
+
+      const MAX_DIM = 640;
+      const scale = Math.min(MAX_DIM / srcW, MAX_DIM / srcH, 1);
+      canvas.width = Math.round(srcW * scale);
+      canvas.height = Math.round(srcH * scale);
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       // Compress to JPEG to save bandwidth
       const imageData = canvas.toDataURL('image/jpeg', 0.6);
       onFrame(imageData);
