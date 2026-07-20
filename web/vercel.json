@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/identify.py": {
+      "includeFiles": "public/assets/{json/paintings.json,images/**}",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/analyze.ts": {
+      "maxDuration": 60
+    },
+    "api/tts/gemini.ts": {
+      "maxDuration": 60
+    },
+    "api/sfx.ts": {
+      "maxDuration": 60
+    }
+  }
+}

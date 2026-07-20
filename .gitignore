@@ -166,7 +166,13 @@ vite.config.ts.timestamp-*
 # YOLO model
 models/yolo/runs/
 models/yolo/datasets/
+models/yolo/weights/*.onnx
 __pycache__/
+
+# Python virtualenvs
+.venv/
+venv/
+*.pyc
 
 # Test Reports
 test-reports/

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import type { Painting } from "../types/painting.ts";
-import paintingsData from "../../public/assets/json/paintings.json";
+import { resolvePainting } from "./paintingResolver";
+import { useLocalYolo } from "./useLocalYolo";
 
 export interface TrackingUpdate {
   dx: number;       // horizontal offset from centre
@@ -10,7 +11,14 @@ export interface TrackingUpdate {
   centered: boolean;
 }
 
-export const useYolo = (
+const DETECTION_MODE: 'local' | 'socket' =
+  import.meta.env.VITE_DETECTION_MODE === 'local' ? 'local'
+  : import.meta.env.VITE_DETECTION_MODE === 'socket' ? 'socket'
+  : import.meta.env.VITE_RELAY_SERVER_URL ? 'socket'
+  : 'local';
+
+const useSocketYolo = (
+  active: boolean,
   onDetection: (data: Painting) => void,
   onStatus?: (status: string) => void,
   onTracking?: (data: TrackingUpdate) => void
@@ -29,6 +37,8 @@ export const useYolo = (
   }, []);
 
   useEffect(() => {
+    if (!active) return;
+
     const RELAY_URL = import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000";
     const socket = io(RELAY_URL, {
       extraHeaders: {
@@ -48,45 +58,7 @@ export const useYolo = (
 
     socket.on("painting_detected", (data: { id: string | number, imageData?: string }) => {
       console.log("Detection received from YOLO:", data);
-
-      let finalPainting: Painting | null = null;
-      const idStr = data.id.toString();
-
-      if (idStr.startsWith("unknown")) {
-        finalPainting = {
-          id: idStr,
-          title: "Desconhecido",
-          artist: "Desconhecido",
-          year: "Desconhecido",
-          style: "Desconhecido",
-          genre: "Desconhecido",
-          medium: "Desconhecido",
-          description: "Quadro não identificado na base de dados.",
-          authors_intention: "Desconhecido",
-          context: "Desconhecido",
-          imagePath: "",
-          imageData: data.imageData
-        };
-      } else {
-
-        const matched = paintingsData.paintings.find(p => p.$id === data.id);
-        if (matched) {
-          finalPainting = {
-            id: matched.$id,
-            title: matched.title,
-            artist: matched.artist,
-            year: matched.year,
-            style: matched.style,
-            genre: matched.genre,
-            medium: matched.medium,
-            description: matched.description,
-            authors_intention: matched.authors_intention,
-            context: matched.context,
-            imagePath: matched.imagePath
-          };
-        }
-      }
-
+      const finalPainting = resolvePainting(data.id, data.imageData);
       if (finalPainting) {
         onDetection(finalPainting);
       }
@@ -97,7 +69,17 @@ export const useYolo = (
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [onDetection]);
+  }, [active, onDetection]);
 
   return { emit, sendFrame };
+};
+
+export const useYolo = (
+  onDetection: (data: Painting) => void,
+  onStatus?: (status: string) => void,
+  onTracking?: (data: TrackingUpdate) => void
+) => {
+  const socket = useSocketYolo(DETECTION_MODE === 'socket', onDetection, onStatus, onTracking);
+  const local = useLocalYolo(DETECTION_MODE === 'local', onDetection, onStatus, onTracking);
+  return DETECTION_MODE === 'local' ? local : socket;
 };

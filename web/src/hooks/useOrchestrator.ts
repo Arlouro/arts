@@ -30,9 +30,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const [criticalError, setCriticalError] = useState<string | null>(null);
   const [failedTasks, setFailedTasks] = useState<Record<string, boolean>>({});
   const [musicFailed, setMusicFailed] = useState(false);
-  // Gate that holds music and SFX silent until the "soundscape ready"
-  // announcement has been heard, so the reveal never talks over itself.
-  const [soundscapeReleased, setSoundscapeReleased] = useState(false);
+  const [musicReady, setMusicReady] = useState(false);
+  const [musicReleased, setMusicReleased] = useState(false);
   const { settings, updateSettings } = useSettings();
 
   const gemini = useMemo(() => new GeminiService(), []);
@@ -41,12 +40,12 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const sfx = useMemo(() => new ElevenLabsService(), []);
 
   useEffect(() => {
-    if (settings.musicEnabled && !isPaused && soundscapeReleased) {
+    if (settings.musicEnabled && !isPaused && musicReleased) {
       lyria.setVolume(settings.masterVolume);
     } else {
       lyria.setVolume(0);
     }
-  }, [settings.masterVolume, settings.musicEnabled, isPaused, soundscapeReleased, lyria]);
+  }, [settings.masterVolume, settings.musicEnabled, isPaused, musicReleased, lyria]);
 
   const lastPaintingId = useRef<string | number | null>(null);
   const scanningIntervalRef = useRef<number | null>(null);
@@ -136,28 +135,42 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const sfxPhase1DoneRef = useRef(false);
   const isNarrationPlayingRef = useRef(false);
   const isUiAnnouncingRef = useRef(false);
+  const introActiveRef = useRef(false);
   useEffect(() => { isUiAnnouncingRef.current = isUiAnnouncing; }, [isUiAnnouncing]);
 
-  const waitForSystemVoice = useCallback(async (startGraceMs: number = 300) => {
+  const waitForSpeechIdle = useCallback(async (startGraceMs: number, includeIntro: boolean) => {
+    const busy = () =>
+      window.speechSynthesis.speaking ||
+      isUiAnnouncingRef.current ||
+      (includeIntro && introActiveRef.current);
     const graceDeadline = Date.now() + startGraceMs;
-    while (Date.now() < graceDeadline && !window.speechSynthesis.speaking && !isUiAnnouncingRef.current) {
+    while (Date.now() < graceDeadline && !busy()) {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     const hardDeadline = Date.now() + 15000;
-    while ((window.speechSynthesis.speaking || isUiAnnouncingRef.current) && Date.now() < hardDeadline) {
+    while (busy() && Date.now() < hardDeadline) {
       await new Promise(resolve => setTimeout(resolve, 150));
     }
   }, []);
 
+  const waitForSystemVoice = useCallback(
+    (startGraceMs: number = 300) => waitForSpeechIdle(startGraceMs, true),
+    [waitForSpeechIdle],
+  );
+  
   useEffect(() => {
-    if (isProcessing || !activePainting || isPaused || soundscapeReleased) return;
+    if (!activePainting || isPaused || musicReleased) return;
+    const musicPhaseSettled =
+      musicReady || musicFailed || (!settings.musicEnabled && !isProcessing);
+    if (!musicPhaseSettled) return;
+
     let cancelled = false;
     (async () => {
       await waitForSystemVoice(2500);
-      if (!cancelled) setSoundscapeReleased(true);
+      if (!cancelled) setMusicReleased(true);
     })();
     return () => { cancelled = true; };
-  }, [isProcessing, activePainting, isPaused, soundscapeReleased, waitForSystemVoice]);
+  }, [activePainting, isPaused, musicReleased, musicReady, musicFailed, settings.musicEnabled, isProcessing, waitForSystemVoice]);
 
   const stopSfxLoop = useCallback(() => {
     isSfxActiveRef.current = false;
@@ -224,12 +237,12 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   }, [sfx, lyria]);
 
   useEffect(() => {
-    if (isPaused || isProcessing || criticalError || !soundscapeReleased || !settings.sfxEnabled || sfxBuffersRef.current.length === 0) {
+    if (isPaused || isProcessing || criticalError || !musicReleased || !settings.sfxEnabled || sfxBuffersRef.current.length === 0) {
       stopSfxLoop();
     } else {
       startSfxLoop();
     }
-  }, [isPaused, isProcessing, criticalError, soundscapeReleased, settings.sfxEnabled, startSfxLoop, stopSfxLoop, sfxBuffersRef.current.length]);
+  }, [isPaused, isProcessing, criticalError, musicReleased, settings.sfxEnabled, startSfxLoop, stopSfxLoop, sfxBuffersRef.current.length]);
 
   const silenceAllAudio = useCallback(async () => {
     abortControllerRef.current?.abort();
@@ -332,7 +345,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       setActivePainting(painting);
 
       setMusicFailed(false);
-      setSoundscapeReleased(false);
+      setMusicReady(false);
+      setMusicReleased(false);
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
       authorsIntentionBufferRef.current = null;
@@ -390,7 +404,12 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
 
       // 1. Music (Lyria)
       if (!isPaused && settings.musicEnabled) {
-        generationTasks.push({ label: 'lyria', promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config) });
+        generationTasks.push({
+          label: 'lyria',
+          promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config).then(() => {
+            if (!signal.aborted) setMusicReady(true);
+          }),
+        });
       }
 
       // 2. TTS Description
@@ -446,11 +465,14 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         try {
           const introBuffer = await introBufferPromise;
           if (introBuffer && !isPaused) {
-            await waitForSystemVoice();
+            introActiveRef.current = true;
+            await waitForSpeechIdle(300, false);
             await tts.playAudioBuffer(introBuffer, settings.masterVolume);
           }
         } catch (error) {
           console.error("Intro playback failed:", error);
+        } finally {
+          introActiveRef.current = false;
         }
       }
 
@@ -502,7 +524,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     } finally {
       setIsProcessing(false);
     }
-  }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, settings.screenReaderMode, waitForSystemVoice]);
+  }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, settings.screenReaderMode, waitForSystemVoice, waitForSpeechIdle]);
 
   const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus, handleTracking);
   emitRef.current = emit;
@@ -519,17 +541,18 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
         const resumeVolume = isNarrationPlayingRef.current
           ? settings.masterVolume * 0.4
           : settings.masterVolume;
-        lyria.resume(resumeVolume);
+        lyria.resume(musicReleased ? resumeVolume : 0);
       }
     }
-  }, [isPaused, lyria, tts, activePainting, settings.musicEnabled, settings.masterVolume]);
+  }, [isPaused, lyria, tts, activePainting, settings.musicEnabled, settings.masterVolume, musicReleased]);
 
   const setGlobalDucking = useCallback((isDucking: boolean) => {
     const vol = isDucking ? settings.masterVolume * 0.2 : settings.masterVolume;
-    if (settings.musicEnabled && !isPaused) lyria.setVolume(vol, 0.3);
+    const musicTarget = musicReleased && settings.musicEnabled && !isPaused ? vol : 0;
+    lyria.setVolume(musicTarget, 0.3);
     if (settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) tts.setVolume(vol, 0.3);
     if (settings.sfxEnabled) sfx.setVolume(vol, 0.3);
-  }, [settings, isPaused, lyria, tts, sfx]);
+  }, [settings, isPaused, musicReleased, lyria, tts, sfx]);
 
   return {
     isProcessing,
@@ -557,6 +580,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     criticalError,
     failedTasks,
     musicFailed,
+    musicReady,
     initAudioContext,
     silenceAllAudio,
     waitForSystemVoice,
@@ -585,8 +609,9 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       setCriticalError(null);
       setFailedTasks({});
       setMusicFailed(false);
-      setSoundscapeReleased(false);
-      
+      setMusicReady(false);
+      setMusicReleased(false);
+
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
       authorsIntentionBufferRef.current = null;

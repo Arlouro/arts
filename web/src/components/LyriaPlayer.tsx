@@ -39,6 +39,7 @@ export const LyriaPlayer: React.FC = () => {
     criticalError,
     failedTasks,
     musicFailed,
+    musicReady,
     stopAll,
     stopTts,
     silenceAllAudio,
@@ -301,7 +302,7 @@ const statusMessages: Record<string, string> = {
   }, [isSearching, hasInteracted]);
 
   useEffect(() => {
-    if (!isProcessing || !hasInteracted) return;
+    if (!isProcessing || !hasInteracted || musicReady) return;
     if (!settings.processingBedEnabled || !settings.musicEnabled) return;
 
     let cancelled = false;
@@ -321,7 +322,26 @@ const statusMessages: Record<string, string> = {
       cancelled = true;
       stopProcessingBed(0.8);
     };
-  }, [isProcessing, hasInteracted, settings.processingBedEnabled, settings.musicEnabled]);
+  }, [isProcessing, hasInteracted, musicReady, settings.processingBedEnabled, settings.musicEnabled]);
+
+  const musicAnnouncedRef = useRef<string | number | null>(null);
+  useEffect(() => {
+    if (!hasInteracted || !activePainting || isPaused || !musicReady) return;
+    if (musicAnnouncedRef.current === activePainting.id) return;
+    musicAnnouncedRef.current = activePainting.id;
+
+    let cancelled = false;
+    (async () => {
+      await waitForSystemVoice(500);
+      if (cancelled) return;
+      announceBoth(
+        isProcessing
+          ? "A música do quadro está pronta e vai começar a tocar. Os restantes conteúdos continuam a ser gerados."
+          : "A música do quadro está pronta e vai começar a tocar."
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [musicReady, activePainting?.id, isPaused, hasInteracted]);
 
   const prevStatusRef = useRef<string>('');
   useEffect(() => {
@@ -361,13 +381,30 @@ const statusMessages: Record<string, string> = {
     if (!hasInteracted || !activePainting || isProcessing || isPaused || musicFailed) return;
     if (readyAnnouncedRef.current === activePainting.id) return;
     readyAnnouncedRef.current = activePainting.id;
-    const readyMessage = settings.musicEnabled
-      ? "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada do quadro e a intenção do autor."
-      : settings.sfxEnabled
-        ? "A paisagem sonora está pronta, mas a música está desativada nas definições. Se a quiser ouvir, ative a música nas definições."
-        : "A análise do quadro está pronta, mas a paisagem sonora está desativada, porque a música e os sons dos objetos estão desligados. Para os ouvir, ative-os nas definições.";
-    announceBoth(readyMessage);
-  }, [activePainting?.id, isProcessing, isPaused, musicFailed, hasInteracted, settings.musicEnabled, settings.sfxEnabled]);
+
+    const items: string[] = [];
+    if (settings.descriptionEnabled && descriptionText && !failedTasks['tts-description']) items.push('a áudio-descrição');
+    if (settings.analysisEnabled && analysisText && !failedTasks['tts-analysis']) items.push('a análise detalhada');
+    if (settings.intentionEnabled && authorsIntentionText && !failedTasks['tts-intention']) items.push('a intenção do autor');
+
+    let readyMessage: string;
+    if (items.length > 0) {
+      const joined = items.length === 1
+        ? items[0]
+        : `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
+      const verb = items.length > 1 ? 'estão prontas' : 'está pronta';
+      readyMessage = `${joined.charAt(0).toUpperCase()}${joined.slice(1)} ${verb}. Use os botões para ouvir. Para procurar outro quadro, prima Procurar quadro.`;
+    } else {
+      readyMessage = "A geração terminou, mas os conteúdos falados estão desativados nas definições. Ative-os nas definições para os ouvir.";
+    }
+
+    let cancelled = false;
+    (async () => {
+      await waitForSystemVoice(800);
+      if (!cancelled) announceBoth(readyMessage);
+    })();
+    return () => { cancelled = true; };
+  }, [activePainting?.id, isProcessing, isPaused, musicFailed, hasInteracted, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, descriptionText, analysisText, authorsIntentionText, failedTasks]);
 
   const autoNarratedRef = useRef<string | number | null>(null);
   useEffect(() => {
@@ -507,30 +544,38 @@ const statusMessages: Record<string, string> = {
           <span>{isPaused ? 'Continuar a reproduzir o áudio' : 'Pausar'}</span>
         </button>
 
-        <button type="button"
-          className={`big-button ${!isSearching ? 'btn-start' : 'btn-stop'}`}
-          onClick={() => {
-            if (!isSearching) {
-              stopAll(true);
-              setIsSearching(true);
-            } else {
-              stopAll(false);
-              setIsSearching(false);
-            }
-          }}
-          onMouseEnter={() => announce(
-            !isSearching ? "Procurar quadro" : "Parar procura de quadro",
-            undefined,
-            true
-          )}
-          aria-label={!isSearching ? "Procurar quadro" : "Parar procura de quadro"}
-          tabIndex={isOverlayActive ? -1 : 0}
-        >
-          <span className="icon" aria-hidden="true">
-            <i className={!isSearching ? 'fa-solid fa-magnifying-glass' : 'fa-regular fa-circle-stop'}></i>
-          </span>
-          <span>{!isSearching ? 'Procurar quadro' : 'Parar procura de quadro'}</span>
-        </button>
+        {(() => {
+          const isAnotherSearch = isSearching && !!activePainting;
+          const searchLabel = !isSearching
+            ? 'Procurar quadro'
+            : isAnotherSearch
+              ? 'Procurar outro quadro'
+              : 'Parar procura de quadro';
+          return (
+            <button type="button"
+              className={`big-button ${!isSearching || isAnotherSearch ? 'btn-start' : 'btn-stop'}`}
+              onClick={() => {
+                if (!isSearching) {
+                  stopAll(true);
+                  setIsSearching(true);
+                } else if (isAnotherSearch) {
+                  stopAll(true);
+                } else {
+                  stopAll(false);
+                  setIsSearching(false);
+                }
+              }}
+              onMouseEnter={() => announce(searchLabel, undefined, true)}
+              aria-label={searchLabel}
+              tabIndex={isOverlayActive ? -1 : 0}
+            >
+              <span className="icon" aria-hidden="true">
+                <i className={!isSearching || isAnotherSearch ? 'fa-solid fa-magnifying-glass' : 'fa-regular fa-circle-stop'}></i>
+              </span>
+              <span>{searchLabel}</span>
+            </button>
+          );
+        })()}
 
         <button type="button"
           className="big-button btn-description"
@@ -682,10 +727,10 @@ const statusMessages: Record<string, string> = {
         {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Quadro atual: Quadro desconhecido" : `Quadro atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
       </footer>
 
-      <CameraStream 
-        onFrame={sendFrame} 
-        isPaused={isPaused || isProcessing || !!activePainting} 
-        isActive={isSearching && !isOverlayActive} 
+      <CameraStream
+        onFrame={sendFrame}
+        isPaused={isPaused}
+        isActive={isSearching && !isOverlayActive && !isProcessing && !activePainting}
       />
     </div>
   );

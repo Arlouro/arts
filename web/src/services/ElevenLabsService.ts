@@ -2,7 +2,7 @@ import { decode } from "base64-arraybuffer";
 import { withRetry, isRetryableError } from "../utils/retry.ts";
 import { getSharedAudioContext } from "../utils/sharedAudio.ts";
 
-const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || "http://localhost:8000"}/api`;
+const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")}/api`;
 
 export class ElevenLabsService {
   private audioContext: AudioContext | null = null;
