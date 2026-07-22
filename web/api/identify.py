@@ -145,10 +145,9 @@ class handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             data = json.loads(self.rfile.read(length) or b"{}")
             if data.get("debug"):
-                global _index
-                if _index is None:
-                    _index = _build_index()
-                return self._respond(200, {"loaded_paintings": len(_index["entries"])})
+                import glob
+                files = glob.glob("/var/task/**", recursive=True)
+                return self._respond(200, {"files": files[:500]})
 
             image_data = data.get("imageData", "")
             if "," in image_data:
