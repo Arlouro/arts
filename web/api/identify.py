@@ -23,17 +23,15 @@ _PAINTINGS_JSON = os.path.join(_ROOT, "public", "assets", "json", "paintings.jso
 _index = None  # built lazily, reused across warm invocations
 
 
-import urllib.request
-
-def _urlread(url):
+def _imread(path):
     try:
-        req = urllib.request.urlopen(url)
-        arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
-        if arr.size == 0:
+        data = np.fromfile(path, dtype=np.uint8)
+        if data.size == 0:
             return None
-        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        return cv2.imdecode(data, cv2.IMREAD_COLOR)
     except Exception:
         return None
+
 
 def _resize_for_sift(img, max_dim=MAX_IMAGE_DIM):
     h, w = img.shape[:2]
@@ -42,38 +40,31 @@ def _resize_for_sift(img, max_dim=MAX_IMAGE_DIM):
     scale = max_dim / max(h, w)
     return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
+
 def _preprocess_for_sift(img):
     img = _resize_for_sift(img)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return _clahe.apply(gray)
 
-def _build_index(base_url):
+
+def _build_index():
     sift = cv2.SIFT_create()
     entries = []
-    
-    json_url = f"{base_url}/assets/json/paintings.json"
-    try:
-        req = urllib.request.urlopen(json_url)
-        paintings = json.loads(req.read().decode('utf-8')).get("paintings", [])
-    except Exception as e:
-        print(f"Failed to fetch json from {json_url}: {e}")
-        paintings = []
+    with open(_PAINTINGS_JSON, "r", encoding="utf-8") as f:
+        paintings = json.load(f).get("paintings", [])
 
     for painting in paintings:
         rel = painting.get("imagePath")
         if not rel:
             continue
-        
-        img_url = f"{base_url}/{rel}"
-        img = _urlread(img_url)
+        ref_path = os.path.join(_ROOT, "public", rel)
+        img = _imread(ref_path)
         if img is None:
             continue
-        
         img = _preprocess_for_sift(img)
         keypoints, descriptors = sift.detectAndCompute(img, None)
         if descriptors is None:
             continue
-            
         entries.append({
             "painting": painting,
             "keypoints": keypoints,
@@ -83,10 +74,11 @@ def _build_index(base_url):
     flann = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), dict(checks=50))
     return {"sift": sift, "flann": flann, "entries": entries}
 
-def _identify(img, base_url):
+
+def _identify(img):
     global _index
     if _index is None:
-        _index = _build_index(base_url)
+        _index = _build_index()
 
     img = _preprocess_for_sift(img)
     keypoints, descriptors = _index["sift"].detectAndCompute(img, None)
@@ -148,9 +140,7 @@ class handler(BaseHTTPRequestHandler):
             if data.get("debug"):
                 global _index
                 if _index is None:
-                    host = self.headers.get("Host", "arts-lac.vercel.app")
-                    scheme = self.headers.get("X-Forwarded-Proto", "https")
-                    _index = _build_index(f"{scheme}://{host}")
+                    _index = _build_index()
                 return self._respond(200, {"loaded_paintings": len(_index["entries"])})
 
             image_data = data.get("imageData", "")
@@ -164,11 +154,7 @@ class handler(BaseHTTPRequestHandler):
             if img is None:
                 return self._respond(400, {"error": "Could not decode image"})
 
-            host = self.headers.get("Host", "arts-lac.vercel.app")
-            scheme = self.headers.get("X-Forwarded-Proto", "https")
-            base_url = f"{scheme}://{host}"
-
-            match = _identify(img, base_url)
+            match = _identify(img)
             self._respond(200, {"id": match.get("$id") if match else None})
         except Exception as exc:  # pragma: no cover
             self._respond(500, {"error": str(exc)})

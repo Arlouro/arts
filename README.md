@@ -50,12 +50,10 @@ Everything runs locally with no separate detector process and no tunnel: YOLO in
 
 1. In `web/.env`, set `VITE_DETECTION_MODE=local`.
 2. Start the dev server:
-
    ```bash
    cd web
    npm run dev
    ```
-
 3. Open the printed local URL and allow camera access.
 
 This is also exactly how the deployed Vercel app behaves — `web/api/identify.py`, `analyze.ts`, `tts/gemini.ts`, and `sfx.ts` are same-origin serverless functions, so no relay server or tunnel is involved in production either.
@@ -67,37 +65,30 @@ Use this when you want the higher-accuracy PyTorch detector (`best.pt`) with its
 This mode needs three processes running at once, plus optionally ngrok:
 
 1. **Relay/proxy server** (Socket.IO hub + local stand-in for the Gemini/ElevenLabs serverless functions):
-
    ```bash
    cd web
    npx tsx src/server/server.ts
    ```
-
    Runs on port `8000` by default.
 
 2. **Python YOLO detector** (must be run from `models/yolo`, since it loads `./weights/best.pt` and `assets/json/paintings.json` relative to the working directory):
-
    ```bash
    pip install ultralytics opencv-python python-socketio numpy
    cd models/yolo
    python src/yolo-run.py
    ```
-
    Opens a local OpenCV preview window and connects to the relay server via `RELAY_SERVER_URL` (from `models/yolo/src/.env`).
 
 3. **Frontend**, with `VITE_DETECTION_MODE=socket` (or just `VITE_RELAY_SERVER_URL` set) in `web/.env`:
-
    ```bash
    cd web
    npm run dev
    ```
 
 4. **(Optional) Expose the relay server with ngrok** — needed if the device running the browser (e.g. a phone) isn't on the same machine as the relay server and Python detector:
-
    ```bash
    ngrok http 8000
    ```
-
    Copy the resulting `https://<id>.ngrok-free.app` URL into **both**:
    - `web/.env` → `VITE_RELAY_SERVER_URL`
    - `models/yolo/src/.env` → `RELAY_SERVER_URL`
