@@ -377,6 +377,20 @@ const statusMessages: Record<string, string> = {
       announceBoth("A música não pôde ser gerada. Ainda assim, pode explorar o quadro através dos botões de áudio-descrição, análise detalhada e intenção do autor. Para ouvir uma música, procure outra vez o quadro.");
     }
   }, [musicFailed]);
+  useEffect(() => {
+    if (!hasInteracted || !activePainting || isPaused || musicFailed || !musicReady) return;
+    if (musicAnnouncedRef.current === activePainting.id) return;
+    
+    if (isProcessing) {
+      musicAnnouncedRef.current = activePainting.id;
+      let cancelled = false;
+      (async () => {
+        await waitForSystemVoice(300);
+        if (!cancelled) announceBoth("A paisagem sonora musical está pronta e irá começar a tocar. Por favor aguarde enquanto a áudio descrição, análise detalhada e intenção do autor são gerados.");
+      })();
+      return () => { cancelled = true; };
+    }
+  }, [activePainting?.id, isProcessing, isPaused, musicFailed, musicReady, hasInteracted]);
 
   const readyAnnouncedRef = useRef<string | number | null>(null);
   useEffect(() => {
