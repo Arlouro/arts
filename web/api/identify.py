@@ -144,6 +144,12 @@ class handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", 0))
             data = json.loads(self.rfile.read(length) or b"{}")
+            if data.get("debug"):
+                global _index
+                if _index is None:
+                    _index = _build_index()
+                return self._respond(200, {"loaded_paintings": len(_index["entries"])})
+
             image_data = data.get("imageData", "")
             if "," in image_data:
                 image_data = image_data.split(",", 1)[1]
