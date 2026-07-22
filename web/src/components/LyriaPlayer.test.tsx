@@ -81,7 +81,8 @@ describe('LyriaPlayer Accessibility', () => {
       clearCriticalError: vi.fn(),
       stopTts: vi.fn(),
       musicFailed: false,
-    musicReady: false,
+      musicReady: false,
+      devDetections: null
     });
 
     const { container } = render(<LyriaPlayer />);
@@ -135,7 +136,8 @@ describe('Screen Reader & Blind User Support', () => {
       clearCriticalError: vi.fn(),
       stopTts: vi.fn(),
       musicFailed: false,
-    musicReady: false,
+      musicReady: false,
+      devDetections: null
     });
   });
 
