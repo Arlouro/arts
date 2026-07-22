@@ -21,7 +21,7 @@ export function resolvePainting(id: string | number, imageData?: string): Painti
     };
   }
 
-  const matched = paintingsData.paintings.find(p => p.$id === id);
+  const matched = paintingsData.paintings.find(p => String(p.$id) === String(id));
   if (!matched) return null;
 
   return {
