@@ -1,10 +1,3 @@
-"""Vercel serverless port of models/yolo/src/identification.py.
-
-Receives a captured painting crop (base64 data URL) and matches it against the
-reference images in public/assets/images using SIFT + FLANN + RANSAC
-homography. The index is built once per warm instance; a cold start pays a
-few seconds building it, which is acceptable for a once-per-capture call.
-"""
 import base64
 import json
 import os
@@ -145,9 +138,10 @@ class handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             data = json.loads(self.rfile.read(length) or b"{}")
             if data.get("debug"):
-                import glob
-                files = glob.glob("/var/task/**", recursive=True)
-                return self._respond(200, {"files": files[:500]})
+                global _index
+                if _index is None:
+                    _index = _build_index()
+                return self._respond(200, {"loaded_paintings": len(_index["entries"])})
 
             image_data = data.get("imageData", "")
             if "," in image_data:

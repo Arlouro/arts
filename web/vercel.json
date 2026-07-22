@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/identify.py": {
-      "includeFiles": "public/assets/{json/paintings.json,images/**}",
+      "includeFiles": "public/assets/**",
       "memory": 1024,
       "maxDuration": 30
     },
