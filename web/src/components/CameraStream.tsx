@@ -118,14 +118,14 @@ export const CameraStream: React.FC<CameraStreamProps> = ({ onFrame, isPaused, i
       const srcH = video.videoHeight;
       if (!srcW || !srcH) return;
 
-      const MAX_DIM = 640;
+      const MAX_DIM = 1280;
       const scale = Math.min(MAX_DIM / srcW, MAX_DIM / srcH, 1);
       canvas.width = Math.round(srcW * scale);
       canvas.height = Math.round(srcH * scale);
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Compress to JPEG to save bandwidth
-      const imageData = canvas.toDataURL('image/jpeg', 0.6);
+      // Compress to JPEG
+      const imageData = canvas.toDataURL('image/jpeg', 0.85);
       onFrame(imageData);
     }
   };

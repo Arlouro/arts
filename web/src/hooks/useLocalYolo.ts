@@ -39,7 +39,7 @@ function cropToDataUrl(img: HTMLImageElement, box: CaptureBox): string {
   canvas.width = w;
   canvas.height = h;
   canvas.getContext('2d')!.drawImage(img, box.x1, box.y1, w, h, 0, 0, w, h);
-  return canvas.toDataURL('image/jpeg', 0.85);
+  return canvas.toDataURL('image/jpeg', 0.95);
 }
 
 export interface DevDetections {
