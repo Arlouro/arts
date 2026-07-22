@@ -5,6 +5,7 @@ export const DWELL_SECONDS = 0.7;
 export const CENTER_ZONE = 0.08;
 export const BORDER_MARGIN = 0.06;
 export const START_DELAY = 0.5;
+export const MIN_SIZE_FRACTION = 0.25;
 
 export interface TrackingUpdate {
   dx: number;
@@ -33,6 +34,7 @@ interface Candidate {
   emaY: number;
   conf: number;
   inFrame: boolean;
+  sizeOk: boolean;
   distFromCenter: number;
   leftEdge: number;
   rightEdge: number;
@@ -90,6 +92,8 @@ export class FramingController {
         topEdge >= BORDER_MARGIN &&
         bottomEdge <= 1 - BORDER_MARGIN;
 
+      const sizeOk = w >= MIN_SIZE_FRACTION && h >= MIN_SIZE_FRACTION;
+
       candidates.push({
         trackId: id,
         box: { ...track.box },
@@ -97,6 +101,7 @@ export class FramingController {
         emaY: ema[1],
         conf: track.box.conf,
         inFrame,
+        sizeOk,
         distFromCenter: Math.hypot(ema[0] - 0.5, ema[1] - 0.5),
         leftEdge,
         rightEdge,
@@ -112,7 +117,8 @@ export class FramingController {
     const fullyInFrame = candidates.filter(c => c.inFrame);
     const pool = fullyInFrame.length > 0 ? fullyInFrame : candidates;
     const active = pool.reduce((a, b) => (rankingScore(a) <= rankingScore(b) ? a : b));
-    const canCapture = fullyInFrame.length > 0;
+    const isFramed = fullyInFrame.length > 0;
+    const canCapture = isFramed && active.sizeOk;
 
     const centered =
       canCapture &&
@@ -123,11 +129,11 @@ export class FramingController {
     cb.onTracking({
       dx: Math.round((active.emaX - 0.5) * 1000) / 1000,
       dy: Math.round((active.emaY - 0.5) * 1000) / 1000,
-      inFrame: canCapture,
+      inFrame: isFramed,
       centered,
     });
 
-    if (!canCapture) {
+    if (!isFramed) {
       const violations: Record<string, number> = {
         left: BORDER_MARGIN - active.leftEdge,
         right: active.rightEdge - (1 - BORDER_MARGIN),
@@ -142,6 +148,11 @@ export class FramingController {
         const [worstEdge] = activeViolations.reduce((a, b) => (a[1] >= b[1] ? a : b));
         cb.onStatus(`out_of_frame_${worstEdge}`);
       }
+      return;
+    }
+
+    if (!active.sizeOk) {
+      cb.onStatus('too_small');
       return;
     }
 

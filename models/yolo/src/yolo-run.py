@@ -14,10 +14,11 @@ RELAY_URL = os.environ.get('RELAY_SERVER_URL', 'http://localhost:8000')
 latest_frame = None
 
 EMA_ALPHA     = 0.4
-DWELL_SECONDS = 0.7  
-CENTER_ZONE   = 0.08 
-BORDER_MARGIN = 0.06 
+DWELL_SECONDS = 0.7
+CENTER_ZONE   = 0.08
+BORDER_MARGIN = 0.06
 START_DELAY   = 0.5
+MIN_SIZE_FRACTION = 0.25
 
 ema_positions      = {}  
 dwell_start_times  = {}
@@ -154,6 +155,8 @@ while True:
 
         dist_from_center = ((ema_x - 0.5) ** 2 + (ema_y - 0.5) ** 2) ** 0.5
 
+        size_ok = w >= MIN_SIZE_FRACTION and h >= MIN_SIZE_FRACTION
+
         candidates.append({
             'obj_id':           obj_id,
             'index':            i,
@@ -161,6 +164,7 @@ while True:
             'ema_y':            ema_y,
             'conf':             conf,
             'in_frame':         is_fully_in_frame,
+            'size_ok':          size_ok,
             'dist_from_center': dist_from_center,
             'left_edge':        left_edge,
             'right_edge':       right_edge,
@@ -195,6 +199,7 @@ while True:
     # ── Continuous framing feedback ──
     beacon_centered = (
         can_capture
+        and active['size_ok']
         and abs(ema_x - 0.5) < CENTER_ZONE
         and abs(ema_y - 0.5) < CENTER_ZONE
         and conf > 0.85
@@ -224,6 +229,11 @@ while True:
                 print(f"ID {obj_id} not fully in frame. Most violated edge: {worst_edge}")
                 sio.emit('status_update', {'status': f'out_of_frame_{worst_edge}'})
 
+        continue
+
+    if not active['size_ok']:
+        print(f"ID {obj_id} framed but too small. Asking user to move closer.")
+        sio.emit('status_update', {'status': 'too_small'})
         continue
 
     # ── In-frame dwell logic ─────

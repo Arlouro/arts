@@ -105,6 +105,7 @@ describe('FramingController', () => {
     id,
     box: box(220, 160, 420, 320, conf),
     lastSeen: 0,
+    velocity: [0, 0] as [number, number],
   });
 
   function run(controller: FramingController, tracks: ReturnType<typeof centredTrack>[], now: number) {
@@ -142,7 +143,7 @@ describe('FramingController', () => {
 
   it('reports the most violated edge when the painting is cut off', () => {
     const c = new FramingController();
-    const track = { id: 7, box: box(-40, 160, 200, 320, 0.9), lastSeen: 0 };
+    const track = { id: 7, box: box(-40, 160, 200, 320, 0.9), lastSeen: 0, velocity: [0, 0] as [number, number] };
     run(c, [track], 0);
     const result = run(c, [track], START_DELAY + 0.05);
     expect(result.statuses).toContain('out_of_frame_left');
@@ -152,7 +153,7 @@ describe('FramingController', () => {
 
   it('reports multiple violations when cut on 3+ edges', () => {
     const c = new FramingController();
-    const track = { id: 9, box: box(-20, -20, 700, 500, 0.9), lastSeen: 0 };
+    const track = { id: 9, box: box(-20, -20, 700, 500, 0.9), lastSeen: 0, velocity: [0, 0] as [number, number] };
     run(c, [track], 0);
     const result = run(c, [track], START_DELAY + 0.05);
     expect(result.statuses).toContain('out_of_frame_multiple');
@@ -161,7 +162,7 @@ describe('FramingController', () => {
   it('prefers the centred candidate among several', () => {
     const c = new FramingController();
     const centred = centredTrack(1);
-    const offCentre = { id: 2, box: box(60, 60, 160, 140, 0.99), lastSeen: 0 };
+    const offCentre = { id: 2, box: box(60, 60, 160, 140, 0.99), lastSeen: 0, velocity: [0, 0] as [number, number] };
     run(c, [centred, offCentre], 0);
     const result = run(c, [centred, offCentre], START_DELAY + DWELL_SECONDS + 0.1);
     const final = run(c, [centred, offCentre], START_DELAY + 2 * (DWELL_SECONDS + 0.1));

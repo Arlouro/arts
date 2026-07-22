@@ -158,6 +158,7 @@ const statusMessages: Record<string, string> = {
     out_of_frame_top: "Mova a câmara mais para cima.",
     out_of_frame_bottom: "Mova a câmara mais para baixo.",
     out_of_frame_multiple: "Afaste a câmara do quadro.",
+    too_small: "Aproxime-se mais do quadro.",
     processing: "Quadro capturado. A analisar o quadro e a compor a paisagem sonora. Isto pode demorar alguns segundos, por favor aguarde.",
     paused: "Procura parada. A câmara está em pausa. Prima o botão Procurar quadro para recomeçar a procura de um quadro.",
     ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
@@ -281,7 +282,7 @@ const statusMessages: Record<string, string> = {
     const msg = getLifecycleStatus();
     if (!msg) return;
 
-    const isOutOfFrame = detectionStatus.startsWith('out_of_frame');
+    const isOutOfFrame = detectionStatus.startsWith('out_of_frame') || detectionStatus === 'too_small';
     if (msg !== lastAnnouncedStatusRef.current) {
       announce(msg, undefined, true);
       lastAnnouncedStatusRef.current = msg;

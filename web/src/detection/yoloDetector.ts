@@ -21,7 +21,7 @@ export interface LetterboxMeta {
 export const INPUT_SIZE = 640;
 
 export const CONF_THRESHOLD = 0.7;
-export const IOU_THRESHOLD = 0.5;
+export const IOU_THRESHOLD = 0.7;
 
 export function intersectionOverUnion(a: Detection, b: Detection): number {
   const ix1 = Math.max(a.x1, b.x1);
@@ -116,7 +116,7 @@ export class YoloDetector {
       ort.env.wasm.wasmPaths = { mjs: ortMjsUrl, wasm: ortWasmUrl };
       this.loading = ort.InferenceSession.create(modelUrl, {
         executionProviders: ['wasm'],
-      }).then(session => {
+      }).then((session: ort.InferenceSession) => {
         this.session = session;
       });
     }
