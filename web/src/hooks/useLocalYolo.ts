@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { Painting } from '../types/painting.ts';
+import type { Detection } from '../detection/yoloDetector';
 import { YoloDetector } from '../detection/yoloDetector';
 import { IouTracker } from '../detection/tracker';
 import { FramingController, type CaptureBox } from '../detection/framingController';
@@ -41,11 +42,18 @@ function cropToDataUrl(img: HTMLImageElement, box: CaptureBox): string {
   return canvas.toDataURL('image/jpeg', 0.85);
 }
 
+export interface DevDetections {
+  boxes: Detection[];
+  frameW: number;
+  frameH: number;
+}
+
 export const useLocalYolo = (
   active: boolean,
   onDetection: (data: Painting) => void,
   onStatus?: (status: string) => void,
   onTracking?: (data: { dx: number; dy: number; inFrame: boolean; centered: boolean }) => void,
+  onDevDetections?: (data: DevDetections) => void,
 ) => {
   const detectorRef = useRef<YoloDetector | null>(null);
   const trackerRef = useRef(new IouTracker());
@@ -60,6 +68,8 @@ export const useLocalYolo = (
   onStatusRef.current = onStatus;
   const onTrackingRef = useRef(onTracking);
   onTrackingRef.current = onTracking;
+  const onDevDetectionsRef = useRef(onDevDetections);
+  onDevDetectionsRef.current = onDevDetections;
 
   useEffect(() => {
     if (!active) return;
@@ -99,6 +109,7 @@ export const useLocalYolo = (
       const w = img.naturalWidth;
       const h = img.naturalHeight;
       const detections = await detector.detect(img, w, h);
+      onDevDetectionsRef.current?.({ boxes: detections, frameW: w, frameH: h });
       const now = performance.now() / 1000;
       const tracks = trackerRef.current.update(detections, now);
 

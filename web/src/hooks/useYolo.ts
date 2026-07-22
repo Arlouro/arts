@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import type { Painting } from "../types/painting.ts";
 import { resolvePainting } from "./paintingResolver";
-import { useLocalYolo } from "./useLocalYolo";
+import { useLocalYolo, type DevDetections } from "./useLocalYolo";
 
 export interface TrackingUpdate {
   dx: number;       // horizontal offset from centre
@@ -77,9 +77,10 @@ const useSocketYolo = (
 export const useYolo = (
   onDetection: (data: Painting) => void,
   onStatus?: (status: string) => void,
-  onTracking?: (data: TrackingUpdate) => void
+  onTracking?: (data: TrackingUpdate) => void,
+  onDevDetections?: (data: DevDetections) => void,
 ) => {
   const socket = useSocketYolo(DETECTION_MODE === 'socket', onDetection, onStatus, onTracking);
-  const local = useLocalYolo(DETECTION_MODE === 'local', onDetection, onStatus, onTracking);
+  const local = useLocalYolo(DETECTION_MODE === 'local', onDetection, onStatus, onTracking, onDevDetections);
   return DETECTION_MODE === 'local' ? local : socket;
 };

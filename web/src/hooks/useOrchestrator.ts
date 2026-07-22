@@ -5,6 +5,7 @@ import { GeminiTTSService } from '../services/GeminiTTSService.ts';
 import { ElevenLabsService } from '../services/ElevenLabsService.ts';
 import type { Painting } from '../types/painting.ts';
 import { useYolo } from './useYolo.ts';
+import type { DevDetections } from './useLocalYolo';
 import { useSettings } from './useSettings.ts';
 import {
   playEarcon, haptic, HAPTICS,
@@ -32,6 +33,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const [musicFailed, setMusicFailed] = useState(false);
   const [musicReady, setMusicReady] = useState(false);
   const [musicReleased, setMusicReleased] = useState(false);
+  const [devDetections, setDevDetections] = useState<DevDetections | null>(null);
   const { settings, updateSettings } = useSettings();
 
   const gemini = useMemo(() => new GeminiService(), []);
@@ -526,7 +528,11 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     }
   }, [gemini, lyria, tts, sfx, isProcessing, isPaused, activePainting, settings.musicEnabled, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, settings.sfxEnabled, settings.screenReaderMode, waitForSystemVoice, waitForSpeechIdle]);
 
-  const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus, handleTracking);
+  const handleDevDetections = useCallback((data: DevDetections) => {
+    setDevDetections(data);
+  }, []);
+
+  const { emit, sendFrame } = useYolo(processNewDetection, setDetectionStatus, handleTracking, handleDevDetections);
   emitRef.current = emit;
 
   const togglePause = useCallback(async () => {
@@ -577,6 +583,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     processNewDetection,
     setGlobalDucking,
     sendFrame,
+    devDetections,
     criticalError,
     failedTasks,
     musicFailed,

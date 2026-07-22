@@ -36,6 +36,7 @@ export const LyriaPlayer: React.FC = () => {
     processNewDetection,
     setGlobalDucking,
     sendFrame,
+    devDetections,
     criticalError,
     failedTasks,
     musicFailed,
@@ -732,6 +733,7 @@ const statusMessages: Record<string, string> = {
         onFrame={sendFrame}
         isPaused={isPaused}
         isActive={isSearching && !isOverlayActive && !isProcessing && !activePainting}
+        devDetections={devDetections}
       />
     </div>
   );
