@@ -166,13 +166,8 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       musicReady || musicFailed || !settings.musicEnabled;
     if (!musicPhaseSettled) return;
 
-    let cancelled = false;
-    (async () => {
-      await waitForSystemVoice(2500);
-      if (!cancelled) setMusicReleased(true);
-    })();
-    return () => { cancelled = true; };
-  }, [activePainting, isPaused, musicReleased, musicReady, musicFailed, settings.musicEnabled, isProcessing, waitForSystemVoice]);
+    setMusicReleased(true);
+  }, [activePainting, isPaused, musicReleased, musicReady, musicFailed, settings.musicEnabled]);
 
   const stopSfxLoop = useCallback(() => {
     isSfxActiveRef.current = false;
