@@ -13,6 +13,10 @@ EARLY_EXIT_RATIO = 2.0
 
 MAX_IMAGE_DIM = 800
 
+CLAHE_CLIP_LIMIT = 2.0
+CLAHE_TILE_GRID = (8, 8)
+_clahe = cv2.createCLAHE(clipLimit=CLAHE_CLIP_LIMIT, tileGridSize=CLAHE_TILE_GRID)
+
 
 def _resize_for_sift(img, max_dim=MAX_IMAGE_DIM):
     h, w = img.shape[:2]
@@ -20,6 +24,12 @@ def _resize_for_sift(img, max_dim=MAX_IMAGE_DIM):
         return img
     scale = max_dim / max(h, w)
     return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+
+def _preprocess_for_sift(img):
+    img = _resize_for_sift(img)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return _clahe.apply(gray)
 
 
 class PaintingIndex:
@@ -63,7 +73,7 @@ class PaintingIndex:
             if img is None:
                 continue
 
-            img = _resize_for_sift(img)
+            img = _preprocess_for_sift(img)
             keypoints, descriptors = self.sift.detectAndCompute(img, None)
             if descriptors is None:
                 continue
@@ -88,7 +98,7 @@ class PaintingIndex:
             print("Error: Could not read captured image.")
             return None
 
-        img = _resize_for_sift(img)
+        img = _preprocess_for_sift(img)
         keypoints, descriptors = self.sift.detectAndCompute(img, None)
         if descriptors is None:
             print("Error: No features detected in captured image.")

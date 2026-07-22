@@ -20,6 +20,10 @@ EARLY_EXIT_INLIERS = 50
 EARLY_EXIT_RATIO = 2.0
 MAX_IMAGE_DIM = 800
 
+CLAHE_CLIP_LIMIT = 2.0
+CLAHE_TILE_GRID = (8, 8)
+_clahe = cv2.createCLAHE(clipLimit=CLAHE_CLIP_LIMIT, tileGridSize=CLAHE_TILE_GRID)
+
 _ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 _PAINTINGS_JSON = os.path.join(_ROOT, "public", "assets", "json", "paintings.json")
 
@@ -44,6 +48,12 @@ def _resize_for_sift(img, max_dim=MAX_IMAGE_DIM):
     return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
 
+def _preprocess_for_sift(img):
+    img = _resize_for_sift(img)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return _clahe.apply(gray)
+
+
 def _build_index():
     sift = cv2.SIFT_create()
     entries = []
@@ -58,7 +68,7 @@ def _build_index():
         img = _imread(ref_path)
         if img is None:
             continue
-        img = _resize_for_sift(img)
+        img = _preprocess_for_sift(img)
         keypoints, descriptors = sift.detectAndCompute(img, None)
         if descriptors is None:
             continue
@@ -77,7 +87,7 @@ def _identify(img):
     if _index is None:
         _index = _build_index()
 
-    img = _resize_for_sift(img)
+    img = _preprocess_for_sift(img)
     keypoints, descriptors = _index["sift"].detectAndCompute(img, None)
     if descriptors is None:
         return None
