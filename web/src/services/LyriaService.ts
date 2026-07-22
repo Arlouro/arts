@@ -64,7 +64,12 @@ export class LyriaService {
   public setVolume(volume: number, rampTime: number = 0.4) {
     if (this.gainNode && this.audioContext) {
       this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + rampTime);
+      if (rampTime <= 0) {
+        this.gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+      } else {
+        this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, this.audioContext.currentTime);
+        this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + rampTime);
+      }
     }
   }
 
@@ -72,7 +77,7 @@ export class LyriaService {
     try {
       this.setStatus('connecting');
       await this.initAudio();
-      this.setVolume(startMuted ? 0 : 1.0);
+      this.setVolume(startMuted ? 0 : 1.0, startMuted ? 0 : 0.4);
 
       const musicConfig = this.buildMusicConfig(rawConfig);
       const weightedPrompts = [{ text: prompt || "calm ambient soundscape", weight: 1.0 }];
