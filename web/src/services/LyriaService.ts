@@ -63,12 +63,12 @@ export class LyriaService {
 
   public setVolume(volume: number, rampTime: number = 0.4) {
     if (this.gainNode && this.audioContext) {
-      this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
+      const now = this.audioContext.currentTime;
+      this.gainNode.gain.cancelScheduledValues(now);
       if (rampTime <= 0) {
-        this.gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        this.gainNode.gain.setValueAtTime(volume, now);
       } else {
-        this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, this.audioContext.currentTime);
-        this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + rampTime);
+        this.gainNode.gain.setTargetAtTime(volume, now, rampTime / 3);
       }
     }
   }

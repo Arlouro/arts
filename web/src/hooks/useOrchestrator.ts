@@ -163,7 +163,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   useEffect(() => {
     if (!activePainting || isPaused || musicReleased) return;
     const musicPhaseSettled =
-      musicReady || musicFailed || (!settings.musicEnabled && !isProcessing);
+      (musicReady || musicFailed || !settings.musicEnabled) && !isProcessing;
     if (!musicPhaseSettled) return;
 
     let cancelled = false;
