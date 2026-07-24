@@ -885,7 +885,8 @@
     height: 100dvh;
     max-height: 100dvh;
     box-shadow: none;
-    padding: max(6vh, env(safe-area-inset-top)) 5vw calc(env(safe-area-inset-bottom) + 16px) 5vw;
+    padding: max(2vh, env(safe-area-inset-top)) 5vw calc(env(safe-area-inset-bottom) + 16px) 5vw;
+    gap: 1.5vh;
   }
 
   .onboarding-nav {
@@ -902,6 +903,10 @@
     margin-left: 0;
   }
 
+
+  .onboarding-page {
+    gap: 1.2vh;
+  }
 
   .onboarding-page-title {
     font-size: 1.6rem;

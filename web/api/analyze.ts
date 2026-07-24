@@ -62,8 +62,8 @@ export default async function handler(req: any, res: any) {
         "MusicPrompt": {
           "Instruments": "Lista de instrumentos baseada na textura visual.",
           "MusicGenre": "Género musical que reflete a época e o sentimento.",
-          "Mood": "Atmosfera emocional.",
-          "Prompt": "Detailed descriptive paragraph for music generation. Must weave together ALL detected emotions, selected instruments, genre, mood, and (when available) the author's stated intention into one cohesive musical direction. (MUST BE IN ENGLISH)",
+          "Mood": "Atmosfera emocional based on the detected emotions.",
+          "Prompt": "Detailed descriptive paragraph for music generation. Must weave together ALL detected emotions, selected instruments, genre, mood, and (when available) the author's stated intention, and apply the sonification rules into one cohesive musical direction. (MUST BE IN ENGLISH)",
           "Config": {
             "Guidance": "How closely the music should follow the prompt (0.0-6.0).",
             "bpm": "Suggested tempo in beats per minute. (60-200)",

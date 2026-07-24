@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useOrchestrator } from '../hooks/useOrchestrator';
+import { useWakeLock } from '../hooks/useWakeLock';
 import { SettingsMenu } from './SettingsMenu';
 import { NotificationModal } from './NotificationModal';
 import { CameraStream } from './CameraStream';
@@ -68,6 +69,8 @@ export const LyriaPlayer: React.FC = () => {
   });
 
   const isOverlayActive = showOnboarding || isSettingsOpen || isModalOpen || !!criticalError;
+
+  useWakeLock(hasInteracted);
 
   const handleOnboardingComplete = () => {
     localStorage.setItem('arts_onboarding_seen', 'true');
