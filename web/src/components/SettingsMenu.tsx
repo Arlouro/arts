@@ -10,6 +10,14 @@ interface SettingsMenuProps {
 
 export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, onClose, announce }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  const handleBackToTop = () => {
+    titleRef.current?.focus({ preventScroll: true });
+    const reduceMotion =
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    dialogRef.current?.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  };
 
   useEffect(() => {
     if (dialogRef.current) {
@@ -57,6 +65,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
 
   const assistanceToggles: ToggleItem[] = [
     { key: 'centeringBeaconEnabled', label: 'Guia sonoro de enquadramento', on: 'Ligado. Um som contínuo ajuda a apontar e a centrar o quadro.', off: 'Desligado. A orientação é apenas por voz.' },
+    { key: 'framingVoiceEnabled', label: 'Guia por voz de enquadramento', on: 'Ligado. O sistema diz como mover o dispositivo até o quadro ficar enquadrado.', off: 'Desligado. O enquadramento é indicado apenas pelo guia sonoro e pela vibração.' },
     { key: 'hapticsEnabled', label: 'Vibração', on: 'Ligada. O dispositivo vibra nos momentos-chave.', off: 'Desligada. O dispositivo não vibra.' },
     { key: 'autoNarrate', label: 'Narração automática', on: 'Ligada. A áudio-descrição e a análise são lidas automaticamente.', off: 'Desligada. Escolhe o que ouvir através dos botões.' },
   ];
@@ -93,7 +102,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
       tabIndex={-1}
     >
       <div className="settings-header">
-        <h2 id="settings-title">Definições</h2>
+        <h1 id="settings-title" ref={titleRef} tabIndex={-1}>Definições</h1>
         <button type="button"
           className="close-button" 
           onClick={onClose}
@@ -105,20 +114,30 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
       </div>
 
       <div className="settings-body">
-        <h3 className="settings-section-title" id="title-filtros">Filtros</h3>
+        <h2 className="settings-section-title" id="title-filtros">Filtros</h2>
         <div className="settings-grid" role="group" aria-labelledby="title-filtros">
           {filterToggles.map(renderToggle)}
         </div>
 
-        <h3 className="settings-section-title" id="title-acessibilidade">Acessibilidade</h3>
+        <h2 className="settings-section-title" id="title-acessibilidade">Acessibilidade</h2>
         <div className="settings-grid" role="group" aria-labelledby="title-acessibilidade">
           {accessibilityToggles.map(renderToggle)}
         </div>
 
-        <h3 className="settings-section-title" id="title-assistencia">Assistência e feedback</h3>
+        <h2 className="settings-section-title" id="title-assistencia">Assistência e feedback</h2>
         <div className="settings-grid" role="group" aria-labelledby="title-assistencia">
           {assistanceToggles.map(renderToggle)}
         </div>
+
+        <button type="button"
+          className="settings-back-to-top"
+          onClick={handleBackToTop}
+          onMouseEnter={() => announce("Voltar ao topo das definições", undefined, true)}
+          aria-label="Voltar ao topo das definições"
+        >
+          <i className="fa-solid fa-arrow-up" aria-hidden="true"></i>
+          <span>Voltar ao topo</span>
+        </button>
       </div>
     </div>
   );

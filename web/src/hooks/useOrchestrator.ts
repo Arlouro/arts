@@ -15,6 +15,11 @@ import {
 import { getSharedAudioContext, unlockSharedAudio } from '../utils/sharedAudio.ts';
 import { primeSpeechVoices } from '../utils/speech.ts';
 
+const MUSIC_RELEASE_FALLBACK_MS = 12000;
+
+const SIMULATED_INTENTION_NOTICE =
+  'Aviso: a intenção do autor que se segue não é real. Foi criada apenas para efeitos de teste desta aplicação.';
+
 export const useOrchestrator = (apiKey: string, isSearching: boolean = false) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePainting, setActivePainting] = useState<Painting | null>(null);
@@ -117,6 +122,11 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
+const musicReleasedRef = useRef(musicReleased);
+  useEffect(() => { musicReleasedRef.current = musicReleased; }, [musicReleased]);
+  const isPausedRef = useRef(isPaused);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+
   // Centering beacon: active only while the user is framing an artwork.
   const framingRef = useRef(false);
   useEffect(() => {
@@ -162,12 +172,18 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   
   useEffect(() => {
     if (!activePainting || isPaused || musicReleased) return;
-    const musicPhaseSettled =
-      musicReady || musicFailed || !settings.musicEnabled;
-    if (!musicPhaseSettled) return;
 
-    setMusicReleased(true);
+    if (musicFailed || !settings.musicEnabled) {
+      setMusicReleased(true);
+      return;
+    }
+    if (!musicReady) return;
+
+    const timer = window.setTimeout(() => setMusicReleased(true), MUSIC_RELEASE_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
   }, [activePainting, isPaused, musicReleased, musicReady, musicFailed, settings.musicEnabled]);
+
+  const releaseMusic = useCallback(() => setMusicReleased(true), []);
 
   const stopSfxLoop = useCallback(() => {
     isSfxActiveRef.current = false;
@@ -386,10 +402,17 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
       const desc = analysis.ArtDescription || "";
       const anal = analysis.ArtAnalysis || "";
       const objects = analysis.DetectedObjects || [];
-      const intention = painting.authors_intention && painting.authors_intention !== "Desconhecido" 
-          ? painting.authors_intention 
+      const documentedIntention =
+        painting.authors_intention &&
+        painting.authors_intention !== "Desconhecido" &&
+        painting.authors_intention !== "Desconhecida"
+          ? painting.authors_intention
           : "";
-      
+      const intention =
+        documentedIntention && painting.authors_intention_simulated
+          ? `${SIMULATED_INTENTION_NOTICE} ${documentedIntention}`
+          : documentedIntention;
+
       setCurrentPrompt(musicPrompt);
       setDescriptionText(desc);
       setAnalysisText(anal);
@@ -548,12 +571,14 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   }, [isPaused, lyria, tts, activePainting, settings.musicEnabled, settings.masterVolume, musicReleased]);
 
   const setGlobalDucking = useCallback((isDucking: boolean) => {
-    const vol = isDucking ? settings.masterVolume * 0.2 : settings.masterVolume;
-    const musicTarget = musicReleased && settings.musicEnabled && !isPaused ? vol : 0;
+    const current = settingsRef.current;
+    const vol = isDucking ? current.masterVolume * 0.2 : current.masterVolume;
+    const musicTarget =
+      musicReleasedRef.current && current.musicEnabled && !isPausedRef.current ? vol : 0;
     lyria.setVolume(musicTarget, 0.3);
-    if (settings.descriptionEnabled || settings.analysisEnabled || settings.intentionEnabled) tts.setVolume(vol, 0.3);
-    if (settings.sfxEnabled) sfx.setVolume(vol, 0.3);
-  }, [settings, isPaused, musicReleased, lyria, tts, sfx]);
+    if (current.descriptionEnabled || current.analysisEnabled || current.intentionEnabled) tts.setVolume(vol, 0.3);
+    if (current.sfxEnabled) sfx.setVolume(vol, 0.3);
+  }, [lyria, tts, sfx]);
 
   return {
     isProcessing,
@@ -574,6 +599,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     playDescription,
     playAnalysis,
     playAuthorsIntention,
+    releaseMusic,
     togglePause,
     processNewDetection,
     setGlobalDucking,

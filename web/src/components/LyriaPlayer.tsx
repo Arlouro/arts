@@ -33,6 +33,7 @@ export const LyriaPlayer: React.FC = () => {
     playDescription,
     playAnalysis,
     playAuthorsIntention,
+    releaseMusic,
     togglePause,
     processNewDetection,
     setGlobalDucking,
@@ -168,6 +169,21 @@ const statusMessages: Record<string, string> = {
     ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
   };
 
+  /**
+   * Statuses that guide aiming, as opposed to reporting what the system is
+   * doing. Only these are silenced by the framing-voice setting: capture,
+   * processing, paused and ready still speak, since the user cannot infer
+   * those from the beacon or the vibration.
+   */
+  const isFramingStatus = (status: string) =>
+    status === 'focusing' ||
+    status === 'centered' ||
+    status === 'too_small' ||
+    status.startsWith('out_of_frame');
+
+  const framingVoiceSuppressed =
+    !settings.framingVoiceEnabled && isFramingStatus(detectionStatus) && !activePainting;
+
   const srBusyTimerRef = useRef<number | null>(null);
   const markSrReading = (text: string) => {
     if (!settings.screenReaderMode || !text) return;
@@ -282,6 +298,7 @@ const statusMessages: Record<string, string> = {
   useEffect(() => {
     if (isPaused || !hasInteracted || !isSearching) return;
     if (activePainting && !isProcessing) return;
+    if (framingVoiceSuppressed) return;
 
     const msg = getLifecycleStatus();
     if (!msg) return;
@@ -295,7 +312,7 @@ const statusMessages: Record<string, string> = {
       announce(msg, undefined, true);
       lastCenteringAnnouncementRef.current = Date.now();
     }
-  }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted, isSearching]);
+  }, [isProcessing, activePainting?.id, detectionStatus, isPaused, hasInteracted, isSearching, framingVoiceSuppressed]);
 
   const wasSearchingRef = useRef(false);
   useEffect(() => {
@@ -344,6 +361,10 @@ const statusMessages: Record<string, string> = {
           ? "A música do quadro está pronta e vai começar a tocar. Os restantes conteúdos continuam a ser gerados."
           : "A música do quadro está pronta e vai começar a tocar."
       );
+      // Only now let the music in, so it follows the announcement instead of
+      // playing underneath it. Waiting-music fade → announcement → music.
+      await waitForSystemVoice(300);
+      if (!cancelled) releaseMusic();
     })();
     return () => { cancelled = true; };
   }, [musicReady, activePainting?.id, isPaused, hasInteracted]);
@@ -440,8 +461,9 @@ const statusMessages: Record<string, string> = {
   const currentStatus = getLifecycleStatus();
 
   useEffect(() => {
+    if (framingVoiceSuppressed) return;
     markSrReading(currentStatus);
-  }, [currentStatus, settings.screenReaderMode]);
+  }, [currentStatus, settings.screenReaderMode, framingVoiceSuppressed]);
 
   const handleTogglePause = () => {
     if (!activePainting) {
@@ -496,6 +518,7 @@ const statusMessages: Record<string, string> = {
           medium: rawPainting.medium,
           description: rawPainting.description,
           authors_intention: rawPainting.authors_intention,
+          authors_intention_simulated: rawPainting.authors_intention_simulated === true,
           context: rawPainting.context,
           imagePath: rawPainting.imagePath.startsWith('/') ? rawPainting.imagePath : `/${rawPainting.imagePath}`
         };
@@ -528,7 +551,14 @@ const statusMessages: Record<string, string> = {
       <div className="sr-only" aria-live="assertive" aria-atomic="true">{liveMessage}</div>
       <header className="top-bar" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
         <h1>ARTS</h1>
-        <div className="status-info" aria-live="assertive" aria-atomic="true">
+        {/* Stays visible when framing guidance is off, but stops announcing:
+            for a screen-reader user this region is the voice guidance, so the
+            setting would do nothing if it only silenced the app's own TTS. */}
+        <div
+          className="status-info"
+          aria-live={framingVoiceSuppressed ? 'off' : 'assertive'}
+          aria-atomic="true"
+        >
           <span className="sr-only">Estado do sistema:</span>
           {currentStatus}
         </div>

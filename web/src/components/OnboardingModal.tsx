@@ -12,7 +12,7 @@ interface OnboardingPage {
   icon: string;
   title: string;
   description: string;
-  detail: string;
+  action: string;
   interactive?: 'sr-choice';
 }
 
@@ -21,43 +21,46 @@ const PAGES: OnboardingPage[] = [
     icon: 'fa-solid fa-music',
     title: 'Bem-vindo ao ARTS',
     description:
-      'Transformamos obras de arte visuais em experiências sonoras acessíveis.',
-    detail:
-      'Uma forma alternativa e inclusiva de apreciar a arte através do som.',
+      'O ARTS transforma obras de arte em experiências sonoras, com música, áudio-descrição e efeitos sonoros.',
+    action: 'Prima Seguinte para avançar.',
   },
   {
     icon: 'fa-solid fa-universal-access',
-    title: 'Utilização de Leitor de Ecrã',
+    title: 'Leitor de ecrã',
     description:
       'Está a utilizar um leitor de ecrã, como o VoiceOver ou o TalkBack?',
-    detail: '',
+    action: 'Escolha um dos dois botões, Sim ou Não, e prima Seguinte.',
     interactive: 'sr-choice',
   },
   {
     icon: 'fa-solid fa-camera',
-    title: 'Aponte a Câmara',
+    title: 'Como procurar um quadro',
     description:
-      'Clique no botão "Procurar quadro" e direcione o seu dispositivo para um quadro.',
-    detail:
-      'O sistema deteta o quadro automaticamente. Mantenha o dispositivo estável para uma captura precisa.',
+      'Após terminar a introdução, o botão Procurar quadro inicia a procura e ativa a câmara. O sistema indica, por voz e por som, como enquadrar o quadro.',
+    action: 'Prima Seguinte para avançar.',
   },
   {
     icon: 'fa-solid fa-wand-magic-sparkles',
-    title: 'Aguarde a Criação',
+    title: 'Depois da captura',
     description:
-      'O sistema analisa o quadro e utiliza a intenção do autor para compor uma paisagem sonora.',
-    detail:
-      'Este processo demora alguns segundos. Aguarde enquanto a paisagem sonora é gerada.',
+      'O sistema analisa o quadro e compõe a paisagem sonora a partir da obra e da intenção do autor. Demora alguns segundos, com música de espera, e avisa quando estiver pronta.',
+    action: 'Prima Seguinte para avançar.',
   },
   {
     icon: 'fa-solid fa-headphones',
-    title: 'Explore o Som',
+    title: 'Explorar o som',
     description:
-      'Ouça a paisagem sonora e explore as diferentes camadas de informação sobre o quadro.',
-    detail:
-      'Áudio-descrição, análise detalhada e intenção do autor, tudo ao toque de um botão.',
+      'Além da paisagem sonora, há botões para ouvir a áudio-descrição, a análise detalhada e a intenção do autor, sempre que quiser. Há também botões para pausar o áudio e para procurar outro quadro.',
+    action: 'Prima Começar para terminar a introdução.',
   },
 ];
+
+const stepSpeech = (index: number): string => {
+  const p = PAGES[index];
+  return `Passo ${index + 1} de ${PAGES.length}. ${p.title}. ${p.description} ${p.action}`;
+};
+
+const SHOW_STEP_ICONS: boolean = false;
 
 const PAGE_COLORS = [
   'var(--accent)',
@@ -95,11 +98,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const announceRef = useRef(announce);
   announceRef.current = announce;
   useEffect(() => {
-    announceRef.current(
-      `Passo ${currentPage + 1} de ${PAGES.length}. ${page.title}. ${page.description} ${page.detail}`,
-      undefined,
-      true
-    );
+    announceRef.current(stepSpeech(currentPage), undefined, true);
   }, [currentPage]);
 
   // Keyboard focus trap: Tab cycles within the dialog
@@ -178,25 +177,25 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           { '--page-accent': PAGE_COLORS[currentPage] } as React.CSSProperties
         }
       >
-        {/* Skip button — shares onboarding-nav-btn so its size matches
-            Anterior/Seguinte exactly, on every breakpoint, with no drift. */}
-        {!isLastPage && (
-          <div className="onboarding-skip-row">
-            <button
-              type="button"
-              className="onboarding-nav-btn onboarding-skip"
-              onClick={onStart}
-              onMouseEnter={() => announce("Saltar introdução", "onboarding_skip", true)}
-              aria-label="Saltar introdução e começar a usar o ARTS"
-            >
-              <span>Saltar</span>
-              <i className="fa-solid fa-forward" aria-hidden="true" />
-            </button>
-          </div>
-        )}
+       <div className="onboarding-skip-row">
+          <button
+            type="button"
+            className="onboarding-nav-btn onboarding-skip"
+            onClick={onStart}
+            onMouseEnter={() => announce("Saltar introdução", "onboarding_skip", true)}
+            aria-label="Saltar introdução e começar a usar o ARTS"
+            disabled={isLastPage}
+            aria-hidden={isLastPage || undefined}
+            tabIndex={isLastPage ? -1 : undefined}
+            style={isLastPage ? { visibility: 'hidden' } : undefined}
+          >
+            <span>Saltar</span>
+            <i className="fa-solid fa-forward" aria-hidden="true" />
+          </button>
+        </div>
 
-        <div className="sr-only" aria-live="polite" aria-atomic="true">
-          Passo {currentPage + 1} de {PAGES.length}. {page.title}. {page.description} {page.detail}
+       <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {stepSpeech(currentPage)}
         </div>
 
         <div
@@ -204,27 +203,29 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           key={currentPage}
           data-direction={direction}
         >
-          <div className="onboarding-icon-wrapper" aria-hidden="true">
-            <div className="onboarding-icon-glow" />
-            <div className="onboarding-icon-circle">
-              <i className={page.icon} />
+          {SHOW_STEP_ICONS && (
+            <div className="onboarding-icon-wrapper" aria-hidden="true">
+              <div className="onboarding-icon-glow" />
+              <div className="onboarding-icon-circle">
+                <i className={page.icon} />
+              </div>
             </div>
-          </div>
+          )}
 
-          <h2
+          <h1
             id="onboarding-title"
             ref={headingRef}
             tabIndex={-1}
             className="onboarding-page-title"
           >
             {page.title}
-          </h2>
+          </h1>
 
           <p id="onboarding-desc" className="onboarding-page-description">
             {page.description}
           </p>
 
-          {page.detail && <p className="onboarding-page-detail">{page.detail}</p>}
+          <p className="onboarding-page-detail onboarding-page-action">{page.action}</p>
 
           {page.interactive === 'sr-choice' && (
             <div

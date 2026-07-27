@@ -291,7 +291,7 @@
   width: 100vw;
   height: 100vh;
   z-index: -1;
-  opacity: 0.3;
+  opacity: 0;
   pointer-events: none;
   background: black;
 }
@@ -353,7 +353,7 @@
   z-index: 10;
 }
 
-.settings-header h2 {
+.settings-header h1 {
   margin: 0;
   font-size: clamp(1.5rem, 3.5vh, 2.5rem);
   color: var(--accent);
@@ -396,6 +396,37 @@
 .settings-body {
   flex: 1;
   padding: 0 4vw calc(4vh + env(safe-area-inset-bottom)) 4vw;
+}
+
+.settings-back-to-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3vw;
+  width: 100%;
+  padding: 2vh;
+  margin-bottom: 2vh;
+  background: var(--card-bg);
+  border: 2px solid var(--accent);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: clamp(0.9rem, 2.2vh, 1.3rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.settings-back-to-top:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.settings-back-to-top:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .settings-grid {

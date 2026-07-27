@@ -61,8 +61,9 @@
       "genre": "Paisagem natural",
       "medium": "Óleo sobre tela",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
-      "context": "Desconhecido",
+      "authors_intention": "Transmitir a permanência silenciosa da rocha diante da agitação do mar, colocando o observador perante uma natureza que ignora o tempo dos homens.",
+      "authors_intention_simulated": true,
+      "context": "Obra na qual se destaca a ousadia da composição relativamente à arte portuguesa de então. A realidade é mostrada como metáfora do poder atemporal da natureza que se sobrepõe, romanticamente, aos ciclos breves da história.",
       "imagePath": "assets/images/penhascos_da_mancha.jpg"
     },
     {
@@ -74,7 +75,8 @@
       "genre": "Pintura religiosa",
       "medium": "Óleo sobre tela",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
+      "authors_intention": "Suspender a fuga num momento de ternura e recolhimento, onde a luz que envolve a família contrasta com a ameaça que ficou para trás.",
+      "authors_intention_simulated": true,
       "context": "Pintor prolifero da geração proto-barroca portuguesa. Foi pintor régio e teve uma prodição irregular com soluções compositivas complexas.",
       "imagePath": "assets/images/descanso_na_fuga_para_o_egipto.jpg"
     },
@@ -87,8 +89,9 @@
       "genre": "Pintura de retrato",
       "medium": "Aguarela sobre papel",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
-      "context": "Caricatura que efectuou representações de figuras do Teatro e da Música. Enquadra-se no grupo de artistas que através do desenho humorista popularizaram novas intrepretações formais.",
+      "authors_intention": "Fixar, com humor afetuoso, a presença cénica da retratada, captando o gesto e a vaidade do palco em poucos traços de aguarela.",
+      "authors_intention_simulated": true,
+      "context": "Caricaturista que efectuou representações de figuras do Teatro e da Música. Enquadra-se no grupo de artistas que através do desenho humorista popularizaram novas intrepretações formais.",
       "imagePath": "assets/images/maria_lalanda.jpg"
     },
     {
@@ -100,7 +103,8 @@
       "genre": "Paisagem urbana",
       "medium": "Óleo sobre tela",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
+      "authors_intention": "Mostrar as máquinas paradas como corpos adormecidos, sublinhando o silêncio invulgar que se instala quando o trabalho cessa.",
+      "authors_intention_simulated": true,
       "context": "Desconhecido",
       "imagePath": "assets/images/máquinas_em_descanso.jpg"
     },
@@ -113,8 +117,9 @@
       "genre": "Pintura de still life",
       "medium": "Óleo sobre tela",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
-      "context": "Desconhecido",
+      "authors_intention": "Concentrar toda a atenção na polpa aberta do fruto, deixando que a luz surja da escuridão como se a matéria tivesse vida própria.",
+      "authors_intention_simulated": true,
+      "context": "Aurélia de Sousa é considerada um marco na viragem do Naturalismo para as correntes modernistas. No entanto, esta obra situa-se no lado mais conservador da sia pintura, ainda influenciada pelo claro escuro antigo",
       "imagePath": "assets/images/romãs.jpg"
     },
     {
@@ -126,8 +131,9 @@
       "genre": "Pintura de retrato",
       "medium": "Óleo sobre tela",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
-      "context": "Desconhecido",
+      "authors_intention": "Registar o traje popular com dignidade, afirmando que o quotidiano rural merece a mesma atenção que os grandes temas históricos.",
+      "authors_intention_simulated": true,
+      "context": "O registo de costumes e tradições foi tema frequente no Romantismo. A narrativa é construída com meios pictóricos de grande eficácia de delineamento sintético e corporização expressiva das cores, articulando com dinamismo a figura com o fundo.",
       "imagePath": "assets/images/costume_de_alfetena.jpg"
     },
     {
@@ -139,8 +145,9 @@
       "genre": "Pintura de retrato",
       "medium": "Óleo sobre tela",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
-      "context": "Desconhecido",
+      "authors_intention": "Guardar a alegria momentânea da retratada, procurando a expressão viva do riso em vez da pose solene do retrato formal.",
+      "authors_intention_simulated": true,
+      "context": "Retrato que representa realisticamente uma mulher bem disposta e alegre com dedicatória à representada. Apesar de António Carneiro ser considerados um dos poucos artistas com um obra simbolista em Portugal, este retrato enquadra-se no Naturalismo.",
       "imagePath": "assets/images/retrato_de_nati_alvarez.jpg"
     },
     {
@@ -152,7 +159,8 @@
       "genre": "Pintura religiosa",
       "medium": "Óleo sobre tela colada em madeira",
       "description": "Desconhecida",
-      "authors_intention": "Desconhecida",
+      "authors_intention": "Captar o instante de embaraço de quem chega tarde, com um olhar cúmplice sobre os pequenos ridículos da vida social.",
+      "authors_intention_simulated": true,
       "context": "Foi um pintor do povo e dos costumes, um divulgador do Naturalismo e casticismo português. Pinto com muito sucesso no seu tempo, apreciado unanimemente. Esta obre pertenceu a um conjunto  de pinturas da velhice de José Malhoa que representava mulheres elegantes enquadradas em jardins. Quadro com uma ambiência de veraneio cosmopolita que celebra o verão e a beleza",
       "imagePath": "assets/images/a_retardatária.jpg"
     }

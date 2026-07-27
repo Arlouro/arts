@@ -8,6 +8,7 @@ export interface Painting {
   medium: string;
   description: string;
   authors_intention: string;
+  authors_intention_simulated?: boolean;
   context: string;
   imagePath: string;
   imageData?: string;

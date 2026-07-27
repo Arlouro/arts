@@ -34,6 +34,8 @@ export function resolvePainting(id: string | number, imageData?: string): Painti
     medium: matched.medium,
     description: matched.description,
     authors_intention: matched.authors_intention,
+    authors_intention_simulated:
+      (matched as { authors_intention_simulated?: boolean }).authors_intention_simulated === true,
     context: matched.context,
     imagePath: matched.imagePath,
   };

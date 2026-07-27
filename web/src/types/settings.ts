@@ -10,6 +10,7 @@ export interface Settings {
   earconsEnabled: boolean;
   hapticsEnabled: boolean;
   centeringBeaconEnabled: boolean;
+  framingVoiceEnabled: boolean;
   processingBedEnabled: boolean;
   autoNarrate: boolean;
 }
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   earconsEnabled: true,
   hapticsEnabled: true,
   centeringBeaconEnabled: true,
+  framingVoiceEnabled: true,
   processingBedEnabled: true,
   autoNarrate: false,
 };
