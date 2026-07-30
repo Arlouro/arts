@@ -169,12 +169,7 @@ const statusMessages: Record<string, string> = {
     ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
   };
 
-  /**
-   * Statuses that guide aiming, as opposed to reporting what the system is
-   * doing. Only these are silenced by the framing-voice setting: capture,
-   * processing, paused and ready still speak, since the user cannot infer
-   * those from the beacon or the vibration.
-   */
+
   const isFramingStatus = (status: string) =>
     status === 'focusing' ||
     status === 'centered' ||
@@ -188,16 +183,18 @@ const statusMessages: Record<string, string> = {
   const markSrReading = (text: string) => {
     if (!settings.screenReaderMode || !text) return;
     setIsUiAnnouncing(true);
+    setGlobalDucking(true);
     if (srBusyTimerRef.current) window.clearTimeout(srBusyTimerRef.current);
     srBusyTimerRef.current = window.setTimeout(() => {
       setIsUiAnnouncing(false);
+      setGlobalDucking(false);
       srBusyTimerRef.current = null;
     }, Math.min(1500 + text.length * 55, 12000));
   };
 
   const announce = (text: string, key?: string, force: boolean = false) => {
     if (settings.screenReaderMode) {
-      setGlobalDucking(false);
+      markSrReading(text);
       return;
     }
 
