@@ -21,8 +21,6 @@ function isLyriaConnectRetriable(error: unknown): boolean {
   return false;
 }
 
-const MUSIC_LEVEL = 0.7;
-
 export class LyriaService {
   private lyria: GoogleGenAI;
   private session: Awaited<ReturnType<GoogleGenAI["live"]["music"]["connect"]>> | null = null;
@@ -66,12 +64,11 @@ export class LyriaService {
   public setVolume(volume: number, rampTime: number = 0.4) {
     if (this.gainNode && this.audioContext) {
       const now = this.audioContext.currentTime;
-      const target = volume * MUSIC_LEVEL;
       this.gainNode.gain.cancelScheduledValues(now);
       if (rampTime <= 0) {
-        this.gainNode.gain.setValueAtTime(target, now);
+        this.gainNode.gain.setValueAtTime(volume, now);
       } else {
-        this.gainNode.gain.setTargetAtTime(target, now, rampTime / 3);
+        this.gainNode.gain.setTargetAtTime(volume, now, rampTime / 3);
       }
     }
   }
@@ -248,10 +245,7 @@ export class LyriaService {
   public resume(volume: number) {
     if (this.gainNode && this.audioContext) {
       this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(
-        volume * MUSIC_LEVEL,
-        this.audioContext.currentTime + 0.3,
-      );
+      this.gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.3);
     }
     if (this.session) {
       this.session.play();
