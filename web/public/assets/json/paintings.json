@@ -106,7 +106,7 @@
       "authors_intention": "Mostrar as máquinas paradas como corpos adormecidos, sublinhando o silêncio invulgar que se instala quando o trabalho cessa.",
       "authors_intention_simulated": true,
       "context": "Desconhecido",
-      "imagePath": "assets/images/máquinas_em_descanso.jpg"
+      "imagePath": "assets/images/maquinas_em_descanso.jpg"
     },
     {
       "$id": 9,
@@ -120,7 +120,7 @@
       "authors_intention": "Concentrar toda a atenção na polpa aberta do fruto, deixando que a luz surja da escuridão como se a matéria tivesse vida própria.",
       "authors_intention_simulated": true,
       "context": "Aurélia de Sousa é considerada um marco na viragem do Naturalismo para as correntes modernistas. No entanto, esta obra situa-se no lado mais conservador da sia pintura, ainda influenciada pelo claro escuro antigo",
-      "imagePath": "assets/images/romãs.jpg"
+      "imagePath": "assets/images/romas.jpg"
     },
     {
       "$id": 10,
@@ -162,7 +162,7 @@
       "authors_intention": "Captar o instante de embaraço de quem chega tarde, com um olhar cúmplice sobre os pequenos ridículos da vida social.",
       "authors_intention_simulated": true,
       "context": "Foi um pintor do povo e dos costumes, um divulgador do Naturalismo e casticismo português. Pinto com muito sucesso no seu tempo, apreciado unanimemente. Esta obre pertenceu a um conjunto  de pinturas da velhice de José Malhoa que representava mulheres elegantes enquadradas em jardins. Quadro com uma ambiência de veraneio cosmopolita que celebra o verão e a beleza",
-      "imagePath": "assets/images/a_retardatária.jpg"
+      "imagePath": "assets/images/a_retardataria.jpg"
     }
   ]
 }

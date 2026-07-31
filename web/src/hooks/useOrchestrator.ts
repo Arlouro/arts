@@ -38,6 +38,9 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   const [musicFailed, setMusicFailed] = useState(false);
   const [musicReady, setMusicReady] = useState(false);
   const [musicReleased, setMusicReleased] = useState(false);
+  const [descriptionReady, setDescriptionReady] = useState(false);
+  const [analysisReady, setAnalysisReady] = useState(false);
+  const [intentionReady, setIntentionReady] = useState(false);
   const [devDetections, setDevDetections] = useState<DevDetections | null>(null);
   const { settings, updateSettings } = useSettings();
 
@@ -185,6 +188,21 @@ const musicReleasedRef = useRef(musicReleased);
 
   const releaseMusic = useCallback(() => setMusicReleased(true), []);
 
+  useEffect(() => {
+    if (!activePainting || isPaused) return;
+
+    if (settings.musicEnabled) {
+     if (musicReleased) {
+        const current = settingsRef.current;
+        lyria.resume(
+          isNarrationPlayingRef.current ? current.masterVolume * 0.4 : current.masterVolume,
+        );
+      }
+    } else {
+      lyria.pause();
+    }
+  }, [settings.musicEnabled, activePainting, isPaused, musicReleased, lyria]);
+
   const stopSfxLoop = useCallback(() => {
     isSfxActiveRef.current = false;
     sfxTimeoutsRef.current.forEach(clearTimeout);
@@ -268,14 +286,14 @@ const musicReleasedRef = useRef(musicReleased);
   }, [lyria, tts, stopSfxLoop]);
 
   const playDescription = useCallback(async () => {
-    if (!descriptionBufferRef.current || isPaused || !settings.descriptionEnabled) return;
+    if (!descriptionBufferRef.current || !settings.descriptionEnabled) return;
 
     try {
       setIsDescriptionPlaying(true);
       isNarrationPlayingRef.current = true;
-      
-      await waitForSystemVoice();
-      
+
+      window.speechSynthesis.cancel();
+
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
       await tts.playAudioBuffer(descriptionBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
@@ -286,16 +304,16 @@ const musicReleasedRef = useRef(musicReleased);
       setIsDescriptionPlaying(false);
       isNarrationPlayingRef.current = false;
     }
-  }, [lyria, tts, isPaused, settings.descriptionEnabled, settings.musicEnabled, settings.masterVolume, waitForSystemVoice]);
+  }, [lyria, tts, settings.descriptionEnabled, settings.musicEnabled, settings.masterVolume]);
 
   const playAnalysis = useCallback(async () => {
-    if (!analysisBufferRef.current || isPaused || !settings.analysisEnabled) return;
+    if (!analysisBufferRef.current || !settings.analysisEnabled) return;
 
     try {
       setIsAnalysisPlaying(true);
       isNarrationPlayingRef.current = true;
-      
-      await waitForSystemVoice();
+
+      window.speechSynthesis.cancel();
 
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
       await tts.playAudioBuffer(analysisBufferRef.current, settings.masterVolume);
@@ -307,16 +325,16 @@ const musicReleasedRef = useRef(musicReleased);
       setIsAnalysisPlaying(false);
       isNarrationPlayingRef.current = false;
     }
-  }, [lyria, tts, isPaused, settings.analysisEnabled, settings.musicEnabled, settings.masterVolume, waitForSystemVoice]);
+  }, [lyria, tts, settings.analysisEnabled, settings.musicEnabled, settings.masterVolume]);
 
   const playAuthorsIntention = useCallback(async () => {
-    if (!authorsIntentionBufferRef.current || isPaused || !settings.intentionEnabled) return;
+    if (!authorsIntentionBufferRef.current || !settings.intentionEnabled) return;
 
     try {
       setIsIntentionPlaying(true);
       isNarrationPlayingRef.current = true;
-      
-      await waitForSystemVoice();
+
+      window.speechSynthesis.cancel();
 
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
       await tts.playAudioBuffer(authorsIntentionBufferRef.current, settings.masterVolume);
@@ -328,7 +346,7 @@ const musicReleasedRef = useRef(musicReleased);
       setIsIntentionPlaying(false);
       isNarrationPlayingRef.current = false;
     }
-  }, [lyria, tts, isPaused, settings.intentionEnabled, settings.musicEnabled, settings.masterVolume, waitForSystemVoice]);
+  }, [lyria, tts, settings.intentionEnabled, settings.musicEnabled, settings.masterVolume]);
 
   const processNewDetection = useCallback(async (painting: Painting) => {
     if (activePainting !== null || painting.id === lastPaintingId.current || isProcessing || isPaused) {
@@ -363,6 +381,9 @@ const musicReleasedRef = useRef(musicReleased);
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
       authorsIntentionBufferRef.current = null;
+      setDescriptionReady(false);
+      setAnalysisReady(false);
+      setIntentionReady(false);
       sfxBuffersRef.current = [];
       sfxPhase1DoneRef.current = false;
 
@@ -423,11 +444,13 @@ const musicReleasedRef = useRef(musicReleased);
       const generationTasks: Array<{ label: string; promise: Promise<any> }> = [];
 
       // 1. Music (Lyria)
-      if (!isPaused && settings.musicEnabled) {
+      if (!isPaused) {
         generationTasks.push({
           label: 'lyria',
           promise: lyria.connect(musicPrompt, true, analysis.MusicPrompt?.Config).then(() => {
-            if (!signal.aborted) setMusicReady(true);
+            if (signal.aborted) return;
+            if (!settingsRef.current.musicEnabled) lyria.pause();
+            setMusicReady(true);
           }),
         });
       }
@@ -437,7 +460,10 @@ const musicReleasedRef = useRef(musicReleased);
         generationTasks.push({
           label: 'tts-description',
           promise: tts.generateSpeechBuffer(desc, signal).then(buf => {
-            if (!signal.aborted) descriptionBufferRef.current = buf;
+            if (!signal.aborted) {
+              descriptionBufferRef.current = buf;
+              setDescriptionReady(!!buf);
+            }
           })
         });
       }
@@ -447,7 +473,10 @@ const musicReleasedRef = useRef(musicReleased);
         generationTasks.push({
           label: 'tts-analysis',
           promise: tts.generateSpeechBuffer(anal, signal).then(buf => {
-            if (!signal.aborted) analysisBufferRef.current = buf;
+            if (!signal.aborted) {
+              analysisBufferRef.current = buf;
+              setAnalysisReady(!!buf);
+            }
           })
         });
       }
@@ -457,7 +486,10 @@ const musicReleasedRef = useRef(musicReleased);
         generationTasks.push({
           label: 'tts-intention',
           promise: tts.generateSpeechBuffer(intention, signal).then(buf => {
-            if (!signal.aborted) authorsIntentionBufferRef.current = buf;
+            if (!signal.aborted) {
+              authorsIntentionBufferRef.current = buf;
+              setIntentionReady(!!buf);
+            }
           })
         });
       }
@@ -558,17 +590,13 @@ const musicReleasedRef = useRef(musicReleased);
     setIsPaused(nextState);
     if (nextState) {
       lyria.pause();
-      tts.pause();
-    } else {
-      tts.resume();
-      if (activePainting && settings.musicEnabled) {
-        const resumeVolume = isNarrationPlayingRef.current
-          ? settings.masterVolume * 0.4
-          : settings.masterVolume;
-        lyria.resume(musicReleased ? resumeVolume : 0);
-      }
+    } else if (activePainting && settings.musicEnabled) {
+      const resumeVolume = isNarrationPlayingRef.current
+        ? settings.masterVolume * 0.4
+        : settings.masterVolume;
+      lyria.resume(musicReleased ? resumeVolume : 0);
     }
-  }, [isPaused, lyria, tts, activePainting, settings.musicEnabled, settings.masterVolume, musicReleased]);
+  }, [isPaused, lyria, activePainting, settings.musicEnabled, settings.masterVolume, musicReleased]);
 
   const setGlobalDucking = useCallback((isDucking: boolean) => {
     const current = settingsRef.current;
@@ -590,6 +618,9 @@ const musicReleasedRef = useRef(musicReleased);
     authorsIntentionText,
     isPaused,
     isDescriptionPlaying,
+    descriptionReady,
+    analysisReady,
+    intentionReady,
     isAnalysisPlaying,
     isIntentionPlaying,
     isUiAnnouncing,
@@ -643,6 +674,9 @@ const musicReleasedRef = useRef(musicReleased);
       descriptionBufferRef.current = null;
       analysisBufferRef.current = null;
       authorsIntentionBufferRef.current = null;
+      setDescriptionReady(false);
+      setAnalysisReady(false);
+      setIntentionReady(false);
       sfxBuffersRef.current = [];
       sfxPhase1DoneRef.current = false;
     }

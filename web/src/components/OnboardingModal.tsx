@@ -171,12 +171,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-roledescription="assistente de configuração"
-        aria-labelledby="onboarding-title"
-        aria-describedby="onboarding-desc"
+        aria-labelledby="onboarding-dialog-label"
         style={
           { '--page-accent': PAGE_COLORS[currentPage] } as React.CSSProperties
         }
       >
+        <span id="onboarding-dialog-label" className="sr-only">Introdução ao ARTS</span>
+
        <div className="onboarding-skip-row">
           <button
             type="button"

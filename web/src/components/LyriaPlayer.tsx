@@ -21,10 +21,11 @@ export const LyriaPlayer: React.FC = () => {
     activePainting, 
     detectionStatus,
     descriptionText,
-    analysisText,
-    authorsIntentionText,
     isPaused,
     isDescriptionPlaying,
+    descriptionReady,
+    analysisReady,
+    intentionReady,
     isAnalysisPlaying,
     isIntentionPlaying,
     setIsUiAnnouncing,
@@ -169,12 +170,6 @@ const statusMessages: Record<string, string> = {
     ready: "Paisagem sonora pronta. Use os botões para ouvir a áudio-descrição, a análise detalhada ou a intenção do autor. Para procurar outro quadro, prima Procurar quadro.",
   };
 
-  /**
-   * Statuses that guide aiming, as opposed to reporting what the system is
-   * doing. Only these are silenced by the framing-voice setting: capture,
-   * processing, paused and ready still speak, since the user cannot infer
-   * those from the beacon or the vibration.
-   */
   const isFramingStatus = (status: string) =>
     status === 'focusing' ||
     status === 'centered' ||
@@ -348,6 +343,7 @@ const statusMessages: Record<string, string> = {
 
   const musicAnnouncedRef = useRef<string | number | null>(null);
   useEffect(() => {
+    if (!settings.musicEnabled) return;
     if (!hasInteracted || !activePainting || isPaused || !musicReady) return;
     if (musicAnnouncedRef.current === activePainting.id) return;
     musicAnnouncedRef.current = activePainting.id;
@@ -356,18 +352,12 @@ const statusMessages: Record<string, string> = {
     (async () => {
       await waitForSystemVoice(500);
       if (cancelled) return;
-      announceBoth(
-        isProcessing
-          ? "A música do quadro está pronta e vai começar a tocar. Os restantes conteúdos continuam a ser gerados."
-          : "A música do quadro está pronta e vai começar a tocar."
-      );
-      // Only now let the music in, so it follows the announcement instead of
-      // playing underneath it. Waiting-music fade → announcement → music.
-      await waitForSystemVoice(300);
+      announceBoth("A música do quadro está pronta e vai começar a tocar.");
+       await waitForSystemVoice(300);
       if (!cancelled) releaseMusic();
     })();
     return () => { cancelled = true; };
-  }, [musicReady, activePainting?.id, isPaused, hasInteracted]);
+  }, [musicReady, activePainting?.id, isPaused, hasInteracted, settings.musicEnabled]);
 
   const prevStatusRef = useRef<string>('');
   useEffect(() => {
@@ -401,50 +391,7 @@ const statusMessages: Record<string, string> = {
       announceBoth("A música não pôde ser gerada. Ainda assim, pode explorar o quadro através dos botões de áudio-descrição, análise detalhada e intenção do autor. Para ouvir uma música, procure outra vez o quadro.");
     }
   }, [musicFailed]);
-  useEffect(() => {
-    if (!hasInteracted || !activePainting || isPaused || musicFailed || !musicReady) return;
-    if (musicAnnouncedRef.current === activePainting.id) return;
-    
-    if (isProcessing) {
-      musicAnnouncedRef.current = activePainting.id;
-      let cancelled = false;
-      (async () => {
-        await waitForSystemVoice(300);
-        if (!cancelled) announceBoth("A paisagem sonora musical está pronta e irá começar a tocar. Por favor aguarde enquanto a áudio descrição, análise detalhada e intenção do autor são gerados.");
-      })();
-      return () => { cancelled = true; };
-    }
-  }, [activePainting?.id, isProcessing, isPaused, musicFailed, musicReady, hasInteracted]);
 
-  const readyAnnouncedRef = useRef<string | number | null>(null);
-  useEffect(() => {
-    if (!hasInteracted || !activePainting || isProcessing || isPaused || musicFailed) return;
-    if (readyAnnouncedRef.current === activePainting.id) return;
-    readyAnnouncedRef.current = activePainting.id;
-
-    const items: string[] = [];
-    if (settings.descriptionEnabled && descriptionText && !failedTasks['tts-description']) items.push('a áudio-descrição');
-    if (settings.analysisEnabled && analysisText && !failedTasks['tts-analysis']) items.push('a análise detalhada');
-    if (settings.intentionEnabled && authorsIntentionText && !failedTasks['tts-intention']) items.push('a intenção do autor');
-
-    let readyMessage: string;
-    if (items.length > 0) {
-      const joined = items.length === 1
-        ? items[0]
-        : `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
-      const verb = items.length > 1 ? 'estão prontas' : 'está pronta';
-      readyMessage = `${joined.charAt(0).toUpperCase()}${joined.slice(1)} ${verb}. Use os botões para ouvir. Para procurar outro quadro, prima Procurar quadro.`;
-    } else {
-      readyMessage = "A geração terminou, mas os conteúdos falados estão desativados nas definições. Ative-os nas definições para os ouvir.";
-    }
-
-    let cancelled = false;
-    (async () => {
-      await waitForSystemVoice(800);
-      if (!cancelled) announceBoth(readyMessage);
-    })();
-    return () => { cancelled = true; };
-  }, [activePainting?.id, isProcessing, isPaused, musicFailed, hasInteracted, settings.descriptionEnabled, settings.analysisEnabled, settings.intentionEnabled, descriptionText, analysisText, authorsIntentionText, failedTasks]);
 
   const autoNarratedRef = useRef<string | number | null>(null);
   useEffect(() => {
@@ -475,8 +422,8 @@ const statusMessages: Record<string, string> = {
     togglePause();
     announceBoth(
       isPaused
-        ? "Áudio irá continuar a tocar a partir de onde foi parado."
-        : "Áudio pausado. Se quiser voltar a tocar o áudio, prima o botão novamente."
+        ? "Paisagem sonora retomada."
+        : "Paisagem sonora pausada. Se quiser voltar a tocar, prima o botão novamente."
     );
   };
 
@@ -551,9 +498,6 @@ const statusMessages: Record<string, string> = {
       <div className="sr-only" aria-live="assertive" aria-atomic="true">{liveMessage}</div>
       <header className="top-bar" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
         <h1>ARTS</h1>
-        {/* Stays visible when framing guidance is off, but stops announcing:
-            for a screen-reader user this region is the voice guidance, so the
-            setting would do nothing if it only silenced the app's own TTS. */}
         <div
           className="status-info"
           aria-live={framingVoiceSuppressed ? 'off' : 'assertive'}
@@ -584,7 +528,7 @@ const statusMessages: Record<string, string> = {
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
           onClick={handleTogglePause}
           onMouseEnter={() => announce(isPaused ? "Continuar a reproduzir o áudio" : "Pausar", undefined, true)}
-          aria-label={isPaused ? "Continuar a reproduzir o áudio" : "Pausar sistema e parar áudio"}
+          aria-label={isPaused ? "Continuar a paisagem sonora" : "Pausar a paisagem sonora"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
@@ -641,7 +585,7 @@ const statusMessages: Record<string, string> = {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a áudio-descrição. Verifique a sua ligação à internet.", "error");
             } else if (!settings.descriptionEnabled) {
               handleActionWithCheck(() => {}, false, "A áudio-descrição está desativada nas definições. Ative-a nas definições para ouvir.");
-            } else if (!descriptionText) {
+            } else if (!descriptionReady) {
               handleActionWithCheck(() => {}, false, "A áudio-descrição ainda está a ser gerada. Por favor, aguarde.");
             } else {
               playDescription();
@@ -673,7 +617,7 @@ const statusMessages: Record<string, string> = {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a análise detalhada e os efeitos sonoros. Verifique a sua ligação à internet.", "error");
             } else if (!settings.analysisEnabled) {
               handleActionWithCheck(() => {}, false, "A análise detalhada está desativada nas definições. Ative-a nas definições para ouvir.");
-            } else if (!analysisText) {
+            } else if (!analysisReady) {
               handleActionWithCheck(() => {}, false, "A análise detalhada ainda está a ser gerada. Por favor, aguarde.");
             } else {
               playAnalysis();
@@ -709,7 +653,7 @@ const statusMessages: Record<string, string> = {
               handleActionWithCheck(() => {}, false, "A intenção do autor não está disponível para este quadro.");
             } else if (failedTasks['tts-intention']) {
               handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a intenção do autor. Verifique a sua ligação à internet.", "error");
-            } else if (!authorsIntentionText) {
+            } else if (!intentionReady) {
               handleActionWithCheck(() => {}, false, "A intenção do autor ainda está a ser gerada. Por favor, aguarde.");
             } else {
               playAuthorsIntention();
