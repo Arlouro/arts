@@ -62,6 +62,8 @@ const stepSpeech = (index: number): string => {
 
 const SHOW_STEP_ICONS: boolean = false;
 
+const SHOW_STEP_DOTS: boolean = false;
+
 const PAGE_COLORS = [
   'var(--accent)',
   'var(--purple)',
@@ -258,7 +260,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           )}
         </div>
 
-        {/* Step indicator dots */}
+        {SHOW_STEP_DOTS && (
         <nav
           className="onboarding-step-nav"
           aria-label="Passos da introdução"
@@ -282,6 +284,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             ))}
           </ol>
         </nav>
+        )}
 
         {/* Navigation buttons */}
         <div className="onboarding-nav">

@@ -715,10 +715,12 @@ const statusMessages: Record<string, string> = {
         variant="error"
       />
 
-      <footer className="status-overlay sr-only" aria-live="polite" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
-        {isProcessing ? "A processar detalhes do quadro e a gerar áudio. Este processo demora alguns segundos, por favor aguarde." : ""}
+      <div className="status-overlay sr-only" aria-live="polite" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
+        {/*
+        {isProcessing ? "A processar detalhes do quadro e a gerar áudio." : ""}
+        */}
         {activePainting ? (activePainting.id.toString().startsWith("unknown") ? "Quadro atual: Quadro desconhecido" : `Quadro atual: ${activePainting.title} de ${activePainting.artist}`) : ""}
-      </footer>
+      </div>
 
       <CameraStream
         onFrame={sendFrame}
