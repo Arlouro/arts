@@ -15,6 +15,9 @@ vi.mock('../hooks/useOrchestrator', () => ({
     authorsIntentionText: '',
     isPaused: false,
     isDescriptionPlaying: false,
+    descriptionReady: true,
+    analysisReady: true,
+    intentionReady: true,
     isAnalysisPlaying: false,
     isIntentionPlaying: false,
     isUiAnnouncing: false,
@@ -60,6 +63,9 @@ describe('LyriaPlayer Accessibility', () => {
       authorsIntentionText: 'A intenção...',
       isPaused: false,
       isDescriptionPlaying: false,
+    descriptionReady: true,
+    analysisReady: true,
+    intentionReady: true,
       isAnalysisPlaying: false,
       isIntentionPlaying: false,
       isUiAnnouncing: false,
@@ -116,6 +122,9 @@ describe('Screen Reader & Blind User Support', () => {
       authorsIntentionText: '',
       isPaused: false,
       isDescriptionPlaying: false,
+    descriptionReady: true,
+    analysisReady: true,
+    intentionReady: true,
       isAnalysisPlaying: false,
       isIntentionPlaying: false,
       isUiAnnouncing: false,
@@ -160,7 +169,7 @@ describe('Screen Reader & Blind User Support', () => {
   it('should use descriptive aria-labels on all action buttons', () => {
     const { getByLabelText } = render(<LyriaPlayer />);
     expect(getByLabelText(/Abrir definições do sistema/i)).toBeInTheDocument();
-    expect(getByLabelText(/Pausar sistema e parar áudio/i)).toBeInTheDocument();
+    expect(getByLabelText(/Pausar a paisagem sonora/i)).toBeInTheDocument();
     expect(getByLabelText(/Procurar quadro/i)).toBeInTheDocument();
   });
 });
