@@ -12,7 +12,7 @@ interface OnboardingPage {
   icon: string;
   title: string;
   description: string;
-  action: string;
+  action?: string;
   interactive?: 'sr-choice';
 }
 
@@ -22,7 +22,6 @@ const PAGES: OnboardingPage[] = [
     title: 'Bem-vindo ao ARTS',
     description:
       'O ARTS transforma obras de arte em experiências sonoras, com música, áudio-descrição e efeitos sonoros.',
-    action: 'Prima Seguinte para avançar.',
   },
   {
     icon: 'fa-solid fa-universal-access',
@@ -37,27 +36,26 @@ const PAGES: OnboardingPage[] = [
     title: 'Como procurar um quadro',
     description:
       'Após terminar a introdução, o botão Procurar quadro inicia a procura e ativa a câmara. O sistema indica, por voz e por som, como enquadrar o quadro.',
-    action: 'Prima Seguinte para avançar.',
   },
   {
     icon: 'fa-solid fa-wand-magic-sparkles',
     title: 'Depois da captura',
     description:
       'O sistema analisa o quadro e compõe a paisagem sonora a partir da obra e da intenção do autor. Demora alguns segundos, com música de espera, e avisa quando estiver pronta.',
-    action: 'Prima Seguinte para avançar.',
   },
   {
     icon: 'fa-solid fa-headphones',
     title: 'Explorar o som',
     description:
       'Além da paisagem sonora, há botões para ouvir a áudio-descrição, a análise detalhada e a intenção do autor, sempre que quiser. Há também botões para pausar o áudio e para procurar outro quadro.',
-    action: 'Prima Começar para terminar a introdução.',
   },
 ];
 
 const stepSpeech = (index: number): string => {
   const p = PAGES[index];
-  return `Passo ${index + 1} de ${PAGES.length}. ${p.title}. ${p.description} ${p.action}`;
+  return [`Passo ${index + 1} de ${PAGES.length}.`, `${p.title}.`, p.description, p.action]
+    .filter(Boolean)
+    .join(' ');
 };
 
 const SHOW_STEP_ICONS: boolean = false;
@@ -228,7 +226,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             {page.description}
           </p>
 
-          <p className="onboarding-page-detail onboarding-page-action">{page.action}</p>
+          {page.action && (
+            <p className="onboarding-page-detail onboarding-page-action">{page.action}</p>
+          )}
 
           {page.interactive === 'sr-choice' && (
             <div
