@@ -5,7 +5,7 @@ import type { DevDetections } from '../hooks/useLocalYolo';
  * Runtime debug overlay flag.
  * - Activate:   add ?debug=1 to the URL (persists via localStorage)
  * - Deactivate: add ?debug=0 to the URL
- * - Also always active when running the Vite dev server.
+ * - Always active when running the Vite dev server.
  */
 function useDebugOverlay(): boolean {
   const [enabled, setEnabled] = useState(() => {

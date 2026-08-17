@@ -503,7 +503,6 @@ const statusMessages: Record<string, string> = {
           aria-live={framingVoiceSuppressed ? 'off' : 'assertive'}
           aria-atomic="true"
         >
-          <span className="sr-only">Estado do sistema:</span>
           {currentStatus}
         </div>
         <button type="button"
