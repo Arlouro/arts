@@ -76,7 +76,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   if (!isOpen) return null;
 
   const buttonLabel = isError ? 'Reiniciar Sistema' : 'Fechar';
-  const buttonAriaLabel = isError ? 'Reiniciar o sistema' : 'Fechar alerta';
+  const buttonAriaLabel = isError ? 'Reiniciar Sistema' : 'Fechar alerta';
   const buttonIcon = isError ? 'fa-arrows-rotate' : 'fa-circle-xmark';
   const buttonClass = isError ? 'btn-restart' : 'btn-ok';
   const dialogTitle = isError ? 'Erro do Sistema' : title;

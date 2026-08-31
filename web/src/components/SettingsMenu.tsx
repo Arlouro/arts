@@ -59,11 +59,8 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
     { key: 'intentionEnabled', label: 'Intenção do Autor', on: 'Ligada. Fica disponível a leitura da intenção do autor sobre o quadro.', off: 'Desligada. A intenção do autor não fica disponível.' },
   ];
 
-  const accessibilityToggles: ToggleItem[] = [
-    { key: 'screenReaderMode', label: 'Modo leitor de ecrã', on: 'Ligado. A narração automática da aplicação está desativada para o seu leitor de ecrã ser a única voz. Desative esta opção apenas se não utilizar um leitor de ecrã.', off: 'Desligado. A aplicação anuncia em voz alta. Ative esta opção se utilizar um leitor de ecrã, para evitar duas vozes em simultâneo.' },
-  ];
-
   const assistanceToggles: ToggleItem[] = [
+    { key: 'screenReaderMode', label: 'Modo leitor de ecrã', on: 'Ligado. A narração automática da aplicação está desativada para o seu leitor de ecrã ser a única voz. Desative esta opção apenas se não utilizar um leitor de ecrã.', off: 'Desligado. A aplicação anuncia em voz alta. Ative esta opção se utilizar um leitor de ecrã, para evitar duas vozes em simultâneo.' },
     { key: 'centeringBeaconEnabled', label: 'Guia sonoro de enquadramento', on: 'Ligado. Um som contínuo ajuda a apontar e a centrar o quadro.', off: 'Desligado. A orientação é apenas por voz.' },
     { key: 'framingVoiceEnabled', label: 'Guia por voz de enquadramento', on: 'Ligado. O sistema diz como mover o dispositivo até o quadro ficar enquadrado.', off: 'Desligado. O enquadramento é indicado apenas pelo guia sonoro e pela vibração.' },
     { key: 'hapticsEnabled', label: 'Vibração', on: 'Ligada. O dispositivo vibra nos momentos-chave.', off: 'Desligada. O dispositivo não vibra.' },
@@ -117,11 +114,6 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = ({ settings, onUpdate, 
         <h2 className="settings-section-title" id="title-filtros">Filtros</h2>
         <div className="settings-grid" role="group" aria-labelledby="title-filtros">
           {filterToggles.map(renderToggle)}
-        </div>
-
-        <h2 className="settings-section-title" id="title-acessibilidade">Acessibilidade</h2>
-        <div className="settings-grid" role="group" aria-labelledby="title-acessibilidade">
-          {accessibilityToggles.map(renderToggle)}
         </div>
 
         <h2 className="settings-section-title" id="title-assistencia">Assistência e feedback</h2>

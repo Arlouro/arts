@@ -1,5 +1,5 @@
 import { decode } from "base64-arraybuffer";
-import { withRetry, isRetryableError } from "../utils/retry.ts";
+import { withRetry, isRetryableError, HttpError } from "../utils/retry.ts";
 import { getSharedAudioContext } from "../utils/sharedAudio.ts";
 
 const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")}/api`;
@@ -39,7 +39,7 @@ export class ElevenLabsService {
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `SFX proxy responded with ${response.status}`);
+            throw new HttpError(response.status, errorData.error || `SFX proxy responded with ${response.status}`);
           }
 
           const { audioData: base64Audio } = await response.json();

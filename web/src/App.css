@@ -11,6 +11,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 4.5rem;
+  flex: 0 0 auto;
   padding: max(2vh, env(safe-area-inset-top)) 4vw 2vh 4vw;
   background: rgba(30, 30, 30, 0.85);
   backdrop-filter: blur(20px);
@@ -22,9 +24,9 @@
 }
 
 .header-btn-settings {
-  background: var(--accent);
+  background: var(--accent-dark);
   border: none;
-  color: white;
+  color: var(--text);
   font-size: 2.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -41,13 +43,14 @@
 }
 
 .header-btn-settings:hover {
-  color: white;
-  background: var(--accent-dark);
+  color: var(--card-bg);
+  background: var(--accent);
 }
 
 .header-btn-settings:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid #ffffff;
   outline-offset: -3px;
+  box-shadow: inset 0 0 0 3px var(--bg);
 }
 
 .top-bar h1 {
@@ -63,11 +66,51 @@
   font-size: clamp(0.85rem, 2vh, 1.1rem);
   font-weight: 600;
   color: var(--text-muted);
+  max-width: 45vw;
+  text-align: center;
+  position: relative;
+}
+
+.status-toggle {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  max-width: 100%;
+  display: block;
+}
+
+.status-toggle .status-text {
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 45vw;
-  text-align: center;
+}
+
+.status-toggle[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.status-full {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max(45vw, 16rem);
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
+  z-index: 30;
 }
 
 .main-content {
@@ -75,7 +118,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(3.5rem, 1fr));
   gap: 0.3vh;
   padding: 0.4vh;
   padding-bottom: max(0.4vh, env(safe-area-inset-bottom));
@@ -100,8 +143,7 @@
   padding: 0.5vh;
   text-transform: uppercase;
   width: 100%;
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
   overflow: hidden;
 }
 
@@ -123,7 +165,7 @@
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;
-    grid-auto-rows: minmax(13vh, 1fr);
+    grid-auto-rows: minmax(max(13vh, 3.5rem), 1fr);
     gap: 0.25vh;
     padding: 0.3vh;
     padding-bottom: max(0.3vh, env(safe-area-inset-bottom));
@@ -388,7 +430,7 @@
 }
 
 .close-button:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid #ffffff;
   outline-offset: -3px;
 }
 

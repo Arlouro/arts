@@ -308,7 +308,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             onClick={handleNext}
             onMouseEnter={() => announce(isLastPage ? "Começar" : "Próximo passo", "onboarding_next", true)}
             aria-label={
-              isLastPage ? 'Começar a usar o ARTS' : 'Próximo passo'
+              isLastPage ? 'Começar a usar o ARTS' : 'Seguinte. Próximo passo'
             }
           >
             <span>{isLastPage ? 'Começar' : 'Seguinte'}</span>

@@ -17,6 +17,8 @@ import { primeSpeechVoices } from '../utils/speech.ts';
 
 const MUSIC_RELEASE_FALLBACK_MS = 12000;
 
+const NARRATION_DUCK_GAIN = 0.1;
+
 const SIMULATED_INTENTION_NOTICE =
   'Aviso: a intenção do autor que se segue não é real. Foi criada apenas para efeitos de teste desta aplicação.';
 
@@ -77,7 +79,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
   }, [lyria, tts, sfx]);
 
   const playScanningPing = useCallback(() => {
-    if (!settings.sfxEnabled || isPaused || isProcessing || activePainting || !isSearching || criticalError) return;
+    if (!settings.earconsEnabled || isPaused || isProcessing || activePainting || !isSearching || criticalError) return;
     
     try {
       const ctx = getSharedAudioContext();
@@ -102,7 +104,7 @@ export const useOrchestrator = (apiKey: string, isSearching: boolean = false) =>
     } catch (e) {
       console.warn("Could not play scanning ping:", e);
     }
-  }, [settings.masterVolume, settings.sfxEnabled, isPaused, isProcessing, activePainting, isSearching, criticalError]);
+  }, [settings.masterVolume, settings.earconsEnabled, isPaused, isProcessing, activePainting, isSearching, criticalError]);
 
   useEffect(() => {
     const shouldPulse = detectionStatus === 'idle' && !activePainting && !isPaused && !isProcessing && isSearching && !criticalError;
@@ -195,7 +197,9 @@ const musicReleasedRef = useRef(musicReleased);
      if (musicReleased) {
         const current = settingsRef.current;
         lyria.resume(
-          isNarrationPlayingRef.current ? current.masterVolume * 0.4 : current.masterVolume,
+          isNarrationPlayingRef.current
+            ? current.masterVolume * NARRATION_DUCK_GAIN
+            : current.masterVolume,
         );
       }
     } else {
@@ -294,7 +298,7 @@ const musicReleasedRef = useRef(musicReleased);
 
       window.speechSynthesis.cancel();
 
-      if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
+      if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * NARRATION_DUCK_GAIN, 0.8);
       await tts.playAudioBuffer(descriptionBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
     } catch (error) {
@@ -315,7 +319,7 @@ const musicReleasedRef = useRef(musicReleased);
 
       window.speechSynthesis.cancel();
 
-      if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
+      if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * NARRATION_DUCK_GAIN, 0.8);
       await tts.playAudioBuffer(analysisBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
     } catch (error) {
@@ -336,7 +340,7 @@ const musicReleasedRef = useRef(musicReleased);
 
       window.speechSynthesis.cancel();
 
-      if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * 0.4, 0.8);
+      if (settings.musicEnabled) lyria.setVolume(settings.masterVolume * NARRATION_DUCK_GAIN, 0.8);
       await tts.playAudioBuffer(authorsIntentionBufferRef.current, settings.masterVolume);
       if (settings.musicEnabled) lyria.setVolume(settings.masterVolume, 0.8);
     } catch (error) {
@@ -531,6 +535,7 @@ const musicReleasedRef = useRef(musicReleased);
       const results = await Promise.allSettled(generationTasks.map(t => t.promise));
 
       let succeededCount = 0;
+      let lyriaFailed = false;
       results.forEach((result, i) => {
         const { label } = generationTasks[i];
         if (result.status === 'rejected') {
@@ -542,6 +547,7 @@ const musicReleasedRef = useRef(musicReleased);
           setFailedTasks(prev => ({ ...prev, [label]: true }));
 
           if (label === 'lyria') {
+            lyriaFailed = true;
             setMusicFailed(true);
           }
         } else {
@@ -554,9 +560,11 @@ const musicReleasedRef = useRef(musicReleased);
       );
 
       if (!signal.aborted && !isPaused) {
-        // Ready cue (non-speech) + haptic, then stop the ambient bed.
-        if (settingsRef.current.earconsEnabled) playEarcon('ready', settings.masterVolume);
-        if (settingsRef.current.hapticsEnabled) haptic(HAPTICS.ready);
+        const fb = settingsRef.current;
+        if (!fb.musicEnabled || lyriaFailed) {
+          if (fb.earconsEnabled) playEarcon('ready', fb.masterVolume);
+          if (fb.hapticsEnabled) haptic(HAPTICS.ready);
+        }
         stopProcessingBed(1.2);
       } else {
         stopProcessingBed(0.4);
@@ -592,7 +600,7 @@ const musicReleasedRef = useRef(musicReleased);
       lyria.pause();
     } else if (activePainting && settings.musicEnabled) {
       const resumeVolume = isNarrationPlayingRef.current
-        ? settings.masterVolume * 0.4
+        ? settings.masterVolume * NARRATION_DUCK_GAIN
         : settings.masterVolume;
       lyria.resume(musicReleased ? resumeVolume : 0);
     }

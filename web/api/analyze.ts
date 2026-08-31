@@ -26,17 +26,19 @@ export default async function handler(req: any, res: any) {
       Analyze ${isUnknown ? "this unidentified artwork" : `"${paintingTitle}" by ${paintingArtist} (${paintingYear})`} to generate a multifaceted emotional and auditory profile.
 
       ### SONIFICATION MAPPING RULES:
-      - **Color Temperature & Hue**: Map to Pitch Range, Mode, and Tempo (Warm = High pitch/Fast tempo; Cold = Low pitch/Slow tempo).
-      - **Saturation**: Map to Tempo, Pitch Range, and Mode (High saturation = Fast tempo/Major mode; Low saturation = Slow tempo/Minor mode).
-      - **Brushstroke Texture**: Map to Rhythm Types and Timbre (Rough = Irregular rhythm/Sharp timbre; Smooth = Regular rhythm/Pure timbre).
-      - **Compositional Weight**: Map to Musical Structure and Melodic Movement (High symmetry = Stepwise movement/Predictable structure; Asymmetrical = Intervallic leaps).
-      - **Lighting**: Map to Volume Envelope and Dynamics (Hard shadows = Sharp attack/Loud dynamics; Soft shadows = Slow attack/Soft dynamics).
-      - **Visual Complexity**: Map to Musical Form Complexity and Dynamism (High complexity = High musical complexity/High dynamism; Low complexity = Repetitive structures).
-      - **Instruments Selection**: Map strictly to Timbre/Tone Color (Aggressive visuals = Sharp/rich timbres; Serene visuals = Pure/bright timbres).
+      Never let a visual property influence any musical property other
+      than the one assigned to it.
+      - Temperature -> Tempo (Warm palette = fast tempo; cold palette = slow tempo).
+      - Saturation -> Harmony, Mode (High saturation = major mode; low saturation = minor mode).
+      - Brightness -> Pitch (High brightness = high pitch; low brightness = low pitch).
+      - Line Curvature -> Timbre (Rounded or curved = pure timbre; sharp or angular = sharp timbre). The instrument selection follows from this rule alone.
+      - Visual Complexity -> Musical Form Complexity (High complexity = high formal complexity WITH high dynamism; low complexity = low formal complexity).
+      - Lighting Direction & Shadows -> Volume Envelope (Hard, directional shadows = sharp attack; diffused light = slow attack).
+      - Lighting Temperature -> Articulation (Warmer light = legato; colder light = staccato).
 
       ${isUnknown ? `### SPECIAL INSTRUCTION:
       As this painting is not in our database, please perform a blind visual analysis. Identify the likely style, potential period, and key visual elements to create the soundscape.` : `### CONTEXT:
-      - **Contexto Histórico:** ${context}
+      - **Contexto:** ${context}
       - **Intenção do Autor:** ${authors_intention}`}
 
       ### TASKS:
@@ -50,7 +52,7 @@ export default async function handler(req: any, res: any) {
       - **Tone:** Analytical, evocative, and psychologically grounded.
       - **Detected Objects Rules:** List of the most relevantly detected objects in the painting (up to 5 objects). Do not force 5 objects; only include objects that are significant to the composition or atmosphere. Can be as few as 1 or 2 if the painting is simple. Order by relevance (Size > High Color Saturation > Symmetry or Off-Center Balance).
       - **Detected Emotions Limit:** List of up to 3 primary emotions evoked by the painting, based on visual analysis and historical context.
-      - **Emotion Selection Rules:** The detected emotions should be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
+      - **Emotion Selection Rules:** The detected emotions should follow the Russell's Circumplex Model of Emotion and be from the following selection: Alarmed, Aroused, Afraid, Tense, Angry, Distressed, Annoyed, Frustrated, Miserable, Depressed, Sad, Gloomy, Bored, Droopy, Tired, Sleepy, Relaxed, At Ease, Calm, Serene, Content, Satisfied, Pleased, Happy, Glad, Delighted, Excited, Astonished
       - **Music Prompt Rules:** The prompt must be a single, unified descriptive paragraph that weaves together ALL detected emotions, the selected instruments, genre, mood, and, when available, the author's stated intention for the artwork. The author's intention should influence the emotional tone, instrument choices, and overall character of the music.
       - **Audio Description Rules:** Write for a Blind or Low Vision audience. Use a clear spatial logic (e.g., foreground to background, or left to right) to help the user construct a mental map.
 
@@ -60,7 +62,7 @@ export default async function handler(req: any, res: any) {
         "ArtAnalysis": "Análise profunda correlacionando estética e contexto histórico.",
         "DetectedEmotions": ["Emoção 1", "Emoção 2"],
         "MusicPrompt": {
-          "Instruments": "Lista de instrumentos baseada na textura visual.",
+          "Instruments": "Lista de instrumentos, determinada apenas pela regra Line Curvature -> Timbre.",
           "MusicGenre": "Género musical que reflete a época e o sentimento.",
           "Mood": "Atmosfera emocional based on the detected emotions.",
           "Prompt": "Detailed descriptive paragraph for music generation. Must weave together ALL detected emotions, selected instruments, genre, mood, and (when available) the author's stated intention, and apply the sonification rules into one cohesive musical direction. (MUST BE IN ENGLISH)",

@@ -1,22 +1,14 @@
 import { GoogleGenAI, Scale, MusicGenerationMode, type LiveMusicGenerationConfig } from "@google/genai";
 import { decode } from "base64-arraybuffer";
 import type { LyriaMessage, ServiceStatus } from "../types/lyria";
-import { withRetry } from "../utils/retry.ts";
+import { withRetry, isRetryableError } from "../utils/retry.ts";
 
 function isLyriaConnectRetriable(error: unknown): boolean {
+  if ((error as { name?: string } | null)?.name === 'AbortError') return false;
+  if (isRetryableError(error)) return true;
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
-    return (
-      msg.includes('429') ||
-      msg.includes('503') ||
-      msg.includes('502') ||
-      msg.includes('rate') ||
-      msg.includes('network') ||
-      msg.includes('timeout') ||
-      msg.includes('websocket') ||
-      msg.includes('connect') ||
-      msg.includes('fetch')
-    );
+    return msg.includes('websocket') || msg.includes('connect');
   }
   return false;
 }

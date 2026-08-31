@@ -13,6 +13,8 @@ const IS_DEV_MODE = import.meta.env.DEV;
 
 const REMINDER_MIN_GAP_MS = 25000;
 
+const READY_CUE_CLEARANCE_MS = 600;
+
 export const LyriaPlayer: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
 
@@ -56,6 +58,7 @@ export const LyriaPlayer: React.FC = () => {
 
   const [paintings, setPaintings] = useState<any[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [statusExpanded, setStatusExpanded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   
   // Modal state
@@ -320,7 +323,7 @@ const statusMessages: Record<string, string> = {
 
   useEffect(() => {
     if (!isProcessing || !hasInteracted || musicReady) return;
-    if (!settings.processingBedEnabled || !settings.musicEnabled) return;
+    if (!settings.processingBedEnabled) return;
 
     let cancelled = false;
     (async () => {
@@ -339,7 +342,7 @@ const statusMessages: Record<string, string> = {
       cancelled = true;
       stopProcessingBed(0.8);
     };
-  }, [isProcessing, hasInteracted, musicReady, settings.processingBedEnabled, settings.musicEnabled]);
+  }, [isProcessing, hasInteracted, musicReady, settings.processingBedEnabled]);
 
   const musicAnnouncedRef = useRef<string | number | null>(null);
   useEffect(() => {
@@ -353,7 +356,14 @@ const statusMessages: Record<string, string> = {
       await waitForSystemVoice(500);
       if (cancelled) return;
       announceBoth("A música do quadro está pronta e vai começar a tocar.");
-       await waitForSystemVoice(300);
+      await waitForSystemVoice(300);
+      if (cancelled) return;
+
+      const fb = settingsRef.current;
+      if (fb.earconsEnabled) playEarcon('ready', fb.masterVolume);
+      if (fb.hapticsEnabled) haptic(HAPTICS.ready);
+      await new Promise(resolve => setTimeout(resolve, READY_CUE_CLEARANCE_MS));
+
       if (!cancelled) releaseMusic();
     })();
     return () => { cancelled = true; };
@@ -498,12 +508,28 @@ const statusMessages: Record<string, string> = {
       <div className="sr-only" aria-live="assertive" aria-atomic="true">{liveMessage}</div>
       <header className="top-bar" aria-hidden={isOverlayActive} inert={isOverlayActive ? true : undefined}>
         <h1>ARTS</h1>
-        <div
-          className="status-info"
-          aria-live={framingVoiceSuppressed ? 'off' : 'assertive'}
-          aria-atomic="true"
-        >
-          {currentStatus}
+        <div className="status-info">
+          <div
+            className="sr-only"
+            aria-live={framingVoiceSuppressed ? 'off' : 'assertive'}
+            aria-atomic="true"
+          >
+            {currentStatus}
+          </div>
+
+          <button
+            type="button"
+            className="status-toggle"
+            aria-expanded={statusExpanded}
+            onClick={() => setStatusExpanded(v => !v)}
+            tabIndex={isOverlayActive ? -1 : 0}
+          >
+            <span className="status-text">{currentStatus}</span>
+          </button>
+
+          {statusExpanded && (
+            <div className="status-full" aria-hidden="true">{currentStatus}</div>
+          )}
         </div>
         <button type="button"
           className="header-btn-settings"
@@ -526,14 +552,14 @@ const statusMessages: Record<string, string> = {
         <button type="button"
           className={`big-button btn-pause ${isPaused ? 'paused' : ''}`}
           onClick={handleTogglePause}
-          onMouseEnter={() => announce(isPaused ? "Continuar a reproduzir o áudio" : "Pausar", undefined, true)}
+          onMouseEnter={() => announce(isPaused ? "Continuar" : "Pausar", undefined, true)}
           aria-label={isPaused ? "Continuar a paisagem sonora" : "Pausar a paisagem sonora"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className={`fa-regular ${isPaused ? 'fa-circle-play' : 'fa-circle-pause'}`}></i>
           </span>
-          <span>{isPaused ? 'Continuar a reproduzir o áudio' : 'Pausar'}</span>
+          <span>{isPaused ? 'Continuar' : 'Pausar'}</span>
         </button>
 
         {(() => {
@@ -592,13 +618,13 @@ const statusMessages: Record<string, string> = {
           }}
           onMouseEnter={() => announce("Tocar Áudio-descrição", "play_description", true)}
           aria-disabled={isOverlayActive}
-          aria-label={isDescriptionPlaying ? "Parar áudio-descrição" : "Tocar Áudio-descrição do quadro"}
+          aria-label={isDescriptionPlaying ? "Parar Áudio-descrição" : "Tocar Áudio-descrição do quadro"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-comment-dots"></i>
           </span>
-          <span>Tocar Áudio-descrição</span>
+          <span>{isDescriptionPlaying ? 'Parar Áudio-descrição' : 'Tocar Áudio-descrição'}</span>
         </button>
 
         <button type="button"
@@ -612,8 +638,8 @@ const statusMessages: Record<string, string> = {
             }
             if (!activePainting) {
               handleActionWithCheck(() => {}, false, "Não é possível tocar a análise: nenhum quadro foi identificado.");
-            } else if (failedTasks['tts-analysis'] || failedTasks['sfx']) {
-              handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a análise detalhada e os efeitos sonoros. Verifique a sua ligação à internet.", "error");
+            } else if (failedTasks['tts-analysis']) {
+              handleActionWithCheck(() => {}, false, "Ocorreu um erro a gerar a análise detalhada. Verifique a sua ligação à internet.", "error");
             } else if (!settings.analysisEnabled) {
               handleActionWithCheck(() => {}, false, "A análise detalhada está desativada nas definições. Ative-a nas definições para ouvir.");
             } else if (!analysisReady) {
@@ -624,13 +650,13 @@ const statusMessages: Record<string, string> = {
           }}
           onMouseEnter={() => announce("Tocar Análise Detalhada", "play_analysis", true)}
           aria-disabled={isOverlayActive}
-          aria-label={isAnalysisPlaying ? "Parar análise detalhada" : "Tocar Análise Detalhada do quadro e som de objetos identificados"}
+          aria-label={isAnalysisPlaying ? "Parar Análise Detalhada" : "Tocar Análise Detalhada do quadro e som de objetos identificados"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-eye"></i>
           </span>
-          <span>Tocar Análise Detalhada</span>
+          <span>{isAnalysisPlaying ? 'Parar Análise Detalhada' : 'Tocar Análise Detalhada'}</span>
         </button>
 
         <button type="button"
@@ -660,13 +686,13 @@ const statusMessages: Record<string, string> = {
           }}
           onMouseEnter={() => announce("Tocar Intenção do Autor", "play_intention", true)}
           aria-disabled={isOverlayActive}
-          aria-label={isIntentionPlaying ? "Parar intenção do autor" : "Tocar Intenção do Autor do quadro"}
+          aria-label={isIntentionPlaying ? "Parar Intenção do Autor" : "Tocar Intenção do Autor do quadro"}
           tabIndex={isOverlayActive ? -1 : 0}
         >
           <span className="icon" aria-hidden="true">
             <i className="fa-regular fa-lightbulb"></i>
           </span>
-          <span>Tocar Intenção do Autor</span>
+          <span>{isIntentionPlaying ? 'Parar Intenção do Autor' : 'Tocar Intenção do Autor'}</span>
         </button>
         </nav>
       </main>
@@ -701,7 +727,7 @@ const statusMessages: Record<string, string> = {
       <NotificationModal 
         isOpen={isModalOpen}
         message={modalMessage}
-        onClose={modalVariant === 'error' ? () => { setIsModalOpen(false); handleRestartSystem(); } : () => setIsModalOpen(false)}
+        onClose={() => setIsModalOpen(false)}
         announce={announce}
         variant={modalVariant}
       />

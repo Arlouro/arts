@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
     const audioStream = await elevenLabs.textToSoundEffects.convert({
       text: prompt,
       durationSeconds: 5,
-      promptInfluence: 0.3,
+      promptInfluence: 0.5,
     });
 
     const chunks: Buffer[] = [];

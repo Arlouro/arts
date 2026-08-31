@@ -1,5 +1,5 @@
 import type { Painting } from "../types/painting.ts";
-import { withRetry, isRetryableError } from "../utils/retry.ts";
+import { withRetry, isRetryableError, HttpError } from "../utils/retry.ts";
 
 const API_BASE_URL = `${import.meta.env.VITE_RELAY_SERVER_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")}/api`;
 
@@ -56,7 +56,7 @@ export class GeminiService {
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || errorData.error || `Server responded with ${response.status}`);
+            throw new HttpError(response.status, errorData.detail || errorData.error || `Server responded with ${response.status}`);
           }
 
           return await response.json();
